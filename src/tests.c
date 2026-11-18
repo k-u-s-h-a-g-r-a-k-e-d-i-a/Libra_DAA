@@ -48,18 +48,47 @@ static int feasible(int n,int W,const int*wt,const int*val,const int*chosen,int 
     }
     return v==result&&w<=W;
 }
-/* Verify the returned BST itself, independent of the DP cost table. */
-static double bst_witness_cost(const double *p,const double *q,const int *roots,
-                              int lo,int hi,int depth,int stride) {
+/* Verify the returned BST itself, independent of the DP cost table. */ static double bst_witness_cost(const double *p,const double *q,const int *roots,                               int lo,int hi,int depth,int stride) {
     if(lo>hi)return q[hi]*depth;
     int r=roots[lo*stride+hi];
     if(r<lo||r>hi)return NAN;
-    return p[r-1]*depth
-        +bst_witness_cost(p,q,roots,lo,r-1,depth+1,stride)
-        +bst_witness_cost(p,q,roots,r+1,hi,depth+1,stride);
+    return p[r-1]*depth         +bst_witness_cost(p,q,roots,lo,r-1,depth+1,stride)         +bst_witness_cost(p,q,roots,r+1,hi,depth+1,stride);
+}
+typedef struct {
+    int priority,id;
+    char payload[17];
+}
+SortExample;
+static int compare_priority(const void *left,const void *right) {
+    const SortExample *a=left,*b=right;
+    return (a->priority>b->priority)-(a->priority<b->priority);
 }
 int run_tests(FILE*out){
     checks=failures=0;
+    SortExample records[]={
+        {
+            2,0,"first"
+        },{
+            1,1,"second"
+        },{
+            2,2,"third"
+        },{
+            1,3,"fourth"
+        }
+    };
+    CHECK(merge_sort(records,4,sizeof(*records),compare_priority,NULL),"shared merge supports records");
+    CHECK(records[0].id==1&&records[1].id==3&&records[2].id==0&&records[3].id==2,"stable record sorting preserves ties and payload");
+    CHECK(strcmp(records[0].payload,"second")==0&&strcmp(records[3].payload,"third")==0,"record bytes preserved");
+    SortExample key={
+        2,0,{
+            0
+        }
+    };
+    int found=binary_iter(records,4,sizeof(*records),&key,compare_priority,NULL);
+    CHECK(found>=0&&records[found].priority==2,"shared binary search supports records");
+    CHECK(quick_sort(records,4,sizeof(*records),compare_priority,NULL),"shared quick supports records");
+    CHECK(records[0].priority==1&&records[3].priority==2,"record quick ordering");
+    CHECK(!merge_sort(records,4,0,compare_priority,NULL),"zero-width sort rejected");
     state=17;
     for(int trial=0;trial<150;++trial){
         char text[65],pattern[12];
@@ -88,8 +117,8 @@ int run_tests(FILE*out){
             a[i]=b[i]=(int)(random_number()%10);
             ++counts[a[i]];
         }
-        CHECK(merge_ints(a,n,NULL),"merge succeeds");
-        quick_ints(b,n,NULL);
+        CHECK(merge_sort(a,n,sizeof(int),compare_ints,NULL),"merge succeeds");
+        quick_sort(b,n,sizeof(int),compare_ints,NULL);
         CHECK(memcmp(a,b,(size_t)n*sizeof(int))==0,"sort agreement");
         for(int i=0;i<n;++i){
             ++after[a[i]];
@@ -97,7 +126,7 @@ int run_tests(FILE*out){
         }
         CHECK(memcmp(counts,after,sizeof(counts))==0,"multiset preserved");
         for(int key=-1;key<=10;++key){
-            int x=binary_iter(a,n,key,NULL),y=binary_rec(a,n,key,NULL),present=0;
+            int x=binary_iter(a,n,sizeof(int),&key,compare_ints,NULL),y=binary_rec(a,n,sizeof(int),&key,compare_ints,NULL),present=0;
             for(int i=0;i<n;++i)if(a[i]==key)present=1;
             CHECK((x>=0)==present&&(y>=0)==present,"binary hit/miss oracle");
         }
@@ -161,19 +190,12 @@ int run_tests(FILE*out){
         int expected=brute_knapsack(n,W,wt,val);
         int result=libraa_knapsack_01_dp(n,W,wt,val,take,NULL);
         CHECK(result==expected&&feasible(n,W,wt,val,take,result),"DP exact witness");
-        result=libraa_knapsack_01_backtrack(n,W,wt,val,take,NULL);
-        CHECK(result==expected&&feasible(n,W,wt,val,take,result),"backtracking exact witness");
-        result=libraa_knapsack_01_fifo_bb(n,W,wt,val,take,NULL);
+        result=libraa_knapsack_01_bb(n,W,wt,val,take,BB_FIFO,NULL);
         CHECK(result==expected&&feasible(n,W,wt,val,take,result),"FIFO exact witness");
-        result=libraa_knapsack_01_lifo_bb(n,W,wt,val,take,NULL);
+        result=libraa_knapsack_01_bb(n,W,wt,val,take,BB_LIFO,NULL);
         CHECK(result==expected&&feasible(n,W,wt,val,take,result),"LIFO exact witness");
-        result=libraa_knapsack_01_least_cost_bb(n,W,wt,val,take,NULL);
+        result=libraa_knapsack_01_bb(n,W,wt,val,take,BB_BEST_BOUND,NULL);
         CHECK(result==expected&&feasible(n,W,wt,val,take,result),"best-bound exact witness");
-        KnapsackItem items[9];
-        for(int i=0;i<n;++i)items[i]=(KnapsackItem){
-            i,wt[i],val[i]
-        };
-        CHECK(libraa_fractional_knapsack(items,n,W,NULL,NULL)+1e-8>=expected,"fractional upper bound");
     }
     int invalid_wt[]={
         0
@@ -309,12 +331,18 @@ int run_tests(FILE*out){
         CHECK(count==expected&&libraa_ford_fulkerson(9,cap2,0,8,NULL)==expected,"matching/flow/exhaustive oracle");
     }
     int hard_wt[20],hard_val[20],hard_take[20];
-    for(int i=0;i<20;++i){hard_wt[i]=2;hard_val[i]=3;}
+    for(int i=0;i<20;++i){
+        hard_wt[i]=2;
+        hard_val[i]=3;
+    }
     errno=0;
-    int hard=libraa_knapsack_01_fifo_bb(20,19,hard_wt,hard_val,hard_take,NULL);
+    int hard=libraa_knapsack_01_bb(20,19,hard_wt,hard_val,hard_take,BB_FIFO,NULL);
     CHECK(hard==-1&&errno==E2BIG,"FIFO exhaustion returns failure instead of a false optimum");
-    double negative_cycle[]={0,-2,1,0},negative_result[4];
-    errno=0;libraa_floyd_warshall(2,negative_cycle,negative_result,NULL);
+    double negative_cycle[]={
+        0,-2,1,0
+    },negative_result[4];
+    errno=0;
+    libraa_floyd_warshall(2,negative_cycle,negative_result,NULL);
     CHECK(errno==EDOM,"Floyd negative cycle reported");
     long long mods[]={
         3,5,7

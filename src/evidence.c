@@ -15,14 +15,9 @@ static int check_choice(int n,int W,const int*wt,const int*val,const int*chosen,
     }
     return weight<=W&&value==result;
 }
-static int choose(int method,int n,int W,const int*wt,const int*val,int*chosen,Counters*s){
-    switch(method){
-        case 0:return libraa_knapsack_01_dp(n,W,wt,val,chosen,s);
-        case 1:return libraa_knapsack_01_backtrack(n,W,wt,val,chosen,s);
-        case 2:return libraa_knapsack_01_fifo_bb(n,W,wt,val,chosen,s);
-        case 3:return libraa_knapsack_01_lifo_bb(n,W,wt,val,chosen,s);
-        default:return libraa_knapsack_01_least_cost_bb(n,W,wt,val,chosen,s);
-    }
+static int choose(int method,int n,int W,const int *wt,const int *val,int *selected,Counters *stats) {
+    if(method==0)return libraa_knapsack_01_dp(n,W,wt,val,selected,stats);
+    return libraa_knapsack_01_bb(n,W,wt,val,selected,(BBOrder)(method-1),stats);
 }
 static int flow_assignment(int left,int right,const int*edges,Counters*s){
     int n=left+right+2,sink=n-1;
@@ -115,19 +110,7 @@ int run_lab(FILE*out){
     },val[]={
         3,4,5,6
     },take[4];
-    for(int method=0;method<5;++method)fprintf(out,"Reading plan method %d: optimum=%d\n",method,choose(method,4,5,wt,val,take,NULL));
-    KnapsackItem fractional[]={
-        {
-            0,2,3
-        },{
-            1,3,4
-        },{
-            2,4,5
-        },{
-            3,5,6
-        }
-    };
-    fprintf(out,"Fractional upper bound=%.2f\n",libraa_fractional_knapsack(fractional,4,5,NULL,NULL));
+    for(int method=0;method<4;++method)fprintf(out,"Reading plan method %d: optimum=%d\n",method,choose(method,4,5,wt,val,take,NULL));
     char subsequence[257];
     fprintf(out,"LCS(data,dart) length=%d",lcs("data","dart",subsequence,sizeof(subsequence),NULL));
     fprintf(out,"; subsequence=%s\n",subsequence);
@@ -186,28 +169,28 @@ int run_lab(FILE*out){
     int ids[]={
         1,2,3,8
     };
-    fprintf(out,"ID 8: iterative index=%d, recursive index=%d\n",binary_iter(ids,4,8,NULL),binary_rec(ids,4,8,NULL));
+    fprintf(out,"ID 8: iterative index=%d, recursive index=%d\n",binary_iter(ids,4,sizeof(int),&(int){
+        8
+    },compare_ints,NULL),binary_rec(ids,4,sizeof(int),&(int){
+        8
+    },compare_ints,NULL));
     int a[]={
         3,1,2
     },b[]={
         3,1,2
     };
-    merge_ints(a,3,NULL);
-    quick_ints(b,3,NULL);
+    merge_sort(a,3,sizeof(int),compare_ints,NULL);
+    quick_sort(b,3,sizeof(int),compare_ints,NULL);
     fprintf(out,"Merge/quick sorts agree=%d\n",memcmp(a,b,sizeof(a))==0);
     return same&&bit_count>0&&recovered>=0&&cost==80;
 }
-static long long median(long long*t){
-    for(int i=1;i<5;++i){
-        long long x=t[i];
-        int j=i;
-        while(j>0&&t[j-1]>x){
-            t[j]=t[j-1];
-            --j;
-        }
-        t[j]=x;
-    }
-    return t[2];
+static int compare_times(const void *left,const void *right) {
+    long long a=*(const long long*)left,b=*(const long long*)right;
+    return (a>b)-(a<b);
+}
+static long long median(long long *times) {
+    if(!merge_sort(times,5,sizeof(*times),compare_times,NULL))return -1;
+    return times[2];
 }
 int run_scenarios(const Library*lib,FILE*out){
     if(!lib->count)return 0;
@@ -241,7 +224,7 @@ int run_scenarios(const Library*lib,FILE*out){
     fprintf(out,"2 SHOCK: reading budget falls from 10 to 5 hours\n");
     int n=lib->count<8?lib->count:8,wt[8],val[8],take[8];
     const char*names[]={
-        "DP","Backtracking","FIFO B&B","LIFO B&B","Best-bound B&B"
+        "DP","FIFO B&B","LIFO B&B","Best-bound B&B"
     };
     for(int i=0;i<n;++i){
         wt[i]=lib->books[i].hours;
@@ -253,7 +236,7 @@ int run_scenarios(const Library*lib,FILE*out){
     };
     for(int w=0;w<2;++w){
         int optimum=choose(0,n,budgets[w],wt,val,take,NULL);
-        for(int method=0;method<5;++method){
+        for(int method=0;method<4;++method){
             Counters c;
             long long times[5];
             int result=choose(method,n,budgets[w],wt,val,take,NULL);
@@ -405,21 +388,21 @@ int run_benchmarks(FILE*out){
         for(int order=0;order<4;++order){
             for(int i=0;i<size;++i)input[i]=order==0?(int)(next_random()%100000):order==1?i:order==2?size-i:7;
             memcpy(b,input,(size_t)size*sizeof(int));
-            merge_ints(b,size,NULL);
+            merge_sort(b,size,sizeof(int),compare_ints,NULL);
             for(int method=0;method<2;++method){
                 Counters c;
                 long long times[5];
                 int good=1;
                 memcpy(a,input,(size_t)size*sizeof(int));
-                if(method)quick_ints(a,size,NULL);
-                else merge_ints(a,size,NULL);
+                if(method)quick_sort(a,size,sizeof(int),compare_ints,NULL);
+                else merge_sort(a,size,sizeof(int),compare_ints,NULL);
                 for(int r=0;r<5;++r){
                     memcpy(a,input,(size_t)size*sizeof(int));
                     Timer t;
                     counters_reset(&c);
                     timer_start(&t);
-                    if(method)quick_ints(a,size,&c);
-                    else if(!merge_ints(a,size,&c))good=0;
+                    if(method)quick_sort(a,size,sizeof(int),compare_ints,&c);
+                    else if(!merge_sort(a,size,sizeof(int),compare_ints,&c))good=0;
                     times[r]=timer_stop_us(&t);
                     good=good&&memcmp(a,b,(size_t)size*sizeof(int))==0;
                 }
@@ -439,7 +422,7 @@ int run_benchmarks(FILE*out){
                 counters_reset(&c);
                 timer_start(&t);
                 for(int k=0;k<4;++k){
-                    int at=method?binary_rec(a,size,keys[k],&c):binary_iter(a,size,keys[k],&c);
+                    int at=method?binary_rec(a,size,sizeof(int),&keys[k],compare_ints,&c):binary_iter(a,size,sizeof(int),&keys[k],compare_ints,&c);
                     good=good&&at==(keys[k]<=size?keys[k]-1:-1);
                 }
                 if(r>=0)times[r]=timer_stop_us(&t);
@@ -461,13 +444,13 @@ int run_benchmarks(FILE*out){
         3,4,5,6,2,9,5,4
     },take[8];
     const char*names[]={
-        "DP","BT","FIFO","LIFO","BestBound"
+        "DP","FIFO","LIFO","BestBound"
     };
     for(int W=10;W>=5;W-=5){
-        int optimum=choose(1,8,W,wt,val,take,NULL);
+        int optimum=choose(0,8,W,wt,val,take,NULL);
         char label[32];
         snprintf(label,sizeof(label),"hours_%d",W);
-        for(int method=0;method<5;++method){
+        for(int method=0;method<4;++method){
             Counters c;
             long long times[5];
             int good=1;

@@ -55,7 +55,7 @@ if (b != NULL) {
 
 1. main.c: find `main` and the `choice == 1` branch.
 2. library.h: inspect Book, Hit and Library.
-3. library.c: inspect `search_books`, then `rank_hits` / `merge_hits`.
+3. library.c: inspect `search_books`, then `merge_sort` and `compare_hits`.
 4. algorithms.c: read the NAIVE part of `match_text` before KMP.
 5. library.c: inspect `recommend_books`.
 6. Then study KMP's prefix_table and the LCS table.
@@ -91,7 +91,7 @@ Second session: naive matching, merge-sort ranking, binary search and the keywor
 
 Third session: KMP LPS, LCS, the recommendation formula, time and space complexity. Trace one recommendation manually.
 
-Fourth session: reading DP versus BT/B&B, matching/flow shock and stress results. Know why the same feasible problem should have the same optimum.
+Fourth session: reading DP versus B&B, matching/flow shock and stress results. Know why the same feasible problem should have the same optimum.
 
 Finally: use the mandatory map in docs/DESIGN_AND_ANALYSIS.md for remaining algorithms, recurrences, P/NP and the reading-plan reduction. They remain examinable; separating the lab does not waive them. Practice changing at least three small things and rebuilding successfully before presenting.
 
@@ -106,3 +106,9 @@ Finally: use the mandatory map in docs/DESIGN_AND_ANALYSIS.md for remaining algo
 - 7:15-8:00: show exports and lab availability; state limitations.
 
 The four-minute viva can cover the whole project and DAA foundations. Understanding a small implementation helps; memorizing a paragraph is not a substitute for tracing its code.
+
+## Current shared interfaces (c-v1.3)
+
+Read docs/REUSE_MAP.md for the shared function signatures. There is now one merge_sort for all record types, one quick_sort, and one iterative/one recursive binary search. The extra arguments width/compare let the same implementation work on different records. A comparator defines ordering; it is not another sorting algorithm. The three required B&B orders use one function with BBOrder. Standalone fractional and knapsack-BT demos are removed; N-Queens/subsets still cover required backtracking.
+
+Search follows main.c -> search_books -> match_text -> merge_sort(compare_hits). Recommendation follows recommend_books -> lcs -> merge_sort(compare_hits). Start with those two flows.

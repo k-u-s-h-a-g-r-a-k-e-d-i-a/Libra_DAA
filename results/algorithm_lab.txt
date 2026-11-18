@@ -12,8 +12,6 @@ Reading plan method 0: optimum=7
 Reading plan method 1: optimum=7
 Reading plan method 2: optimum=7
 Reading plan method 3: optimum=7
-Reading plan method 4: optimum=7
-Fractional upper bound=7.00
 LCS(data,dart) length=3; subsequence=dat
 Report matrix-chain minimum products=30000
 Frequent-keyword optimal BST cost=2.75

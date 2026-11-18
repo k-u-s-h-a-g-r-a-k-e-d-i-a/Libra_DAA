@@ -1,6 +1,7 @@
 // src/workbench/workbench.c — Full DAA syllabus implementations in pure C.
 // PBL handbook lines 6-39 (Common Syllabus Implementation Standard).
 #include "workbench.h"
+#include "algorithms.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,7 +72,6 @@ int libraa_max_subarray_dc(const int* arr, int low, int high, int* out_start, in
         return cross_sum;
     }
 }
-
 long long libraa_fast_pow_mod(long long base,long long exp,long long mod,Counters*c) {
     long long result;
     if(exp<0 || mod<1 || mod>2000000000LL) {
@@ -211,23 +211,21 @@ void libraa_matrix_multiply_strassen(int n,const double*A,const double*B,double*
 // ============================================================================
 // 2. GREEDY ALGORITHMS
 // ============================================================================
+static int compare_finish(const void *left,const void *right) {
+    const Activity *a=left,*b=right;
+    return (a->finish>b->finish)-(a->finish<b->finish);
+}
+static int compare_start(const void *left,const void *right) {
+    const Activity *a=left,*b=right;
+    return (a->start>b->start)-(a->start<b->start);
+}
 int libraa_activity_selection(Activity* activities, int n, int* out_selected, Counters* c) {
     if(!out_selected||n<0||n>256||(n&&!activities)){
         errno=EINVAL;
         return -1;
     }
     if (!activities || n <= 0) return 0;
-    // Sort by finish time ascending (bubble sort or quick sort)
-    for (int i = 0; i < n - 1; ++i) {
-        for (int j = 0; j < n - i - 1; ++j) {
-            if (c) c->comparisons++;
-            if (activities[j].finish > activities[j + 1].finish) {
-                Activity tmp = activities[j];
-                activities[j] = activities[j + 1];
-                activities[j + 1] = tmp;
-            }
-        }
-    }
+    if(!merge_sort(activities,n,sizeof(Activity),compare_finish,c))return -1;
     for(int i=0;i<n;++i)if(activities[i].start<0||activities[i].finish<=activities[i].start){
         errno=EINVAL;
         return -1;
@@ -257,17 +255,7 @@ int libraa_interval_partitioning(const Activity* intervals, int n, int* out_room
     Activity sorted[256];
     int count = n < 256 ? n : 256;
     for (int i = 0; i < count; ++i) sorted[i] = intervals[i];
-    // Sort intervals by start time ascending
-    for (int i = 0; i < count - 1; ++i) {
-        for (int j = 0; j < count - i - 1; ++j) {
-            if (c) c->comparisons++;
-            if (sorted[j].start > sorted[j + 1].start) {
-                Activity tmp = sorted[j];
-                sorted[j] = sorted[j + 1];
-                sorted[j + 1] = tmp;
-            }
-        }
-    }
+    if(!merge_sort(sorted,count,sizeof(Activity),compare_start,c))return -1;
     // room_finish[r] stores the finish time of the last activity in room r
     int room_finish[256];
     int num_rooms = 0;
@@ -295,49 +283,6 @@ int libraa_interval_partitioning(const Activity* intervals, int n, int* out_room
         }
     }
     return num_rooms;
-}
-double libraa_fractional_knapsack(KnapsackItem* items, int n, double capacity, double* out_take_fractions, Counters* c) {
-    if(n<0||n>100||capacity<0||(n&&!items)){
-        errno=EINVAL;
-        return NAN;
-    }
-    for(int i=0;i<n;++i)if(items[i].weight<=0||items[i].value<0||items[i].id<0||items[i].id>=n){
-        errno=EINVAL;
-        return NAN;
-    }
-    if(out_take_fractions)memset(out_take_fractions,0,(size_t)n*sizeof(double));
-    if (!items || n <= 0 || capacity <= 0.0) return 0.0;
-    // Sort by value/weight ratio descending
-    for (int i = 0; i < n - 1; ++i) {
-        for (int j = 0; j < n - i - 1; ++j) {
-            double r1 = items[j].value / items[j].weight;
-            double r2 = items[j + 1].value / items[j + 1].weight;
-            if (c) c->comparisons++;
-            if (r1 < r2) {
-                KnapsackItem tmp = items[j];
-                items[j] = items[j + 1];
-                items[j + 1] = tmp;
-            }
-        }
-    }
-    double current_weight = 0.0;
-    double total_value = 0.0;
-    for (int i = 0; i < n; ++i) {
-        if (c) c->comparisons++;
-        if (current_weight + items[i].weight <= capacity) {
-            current_weight += items[i].weight;
-            total_value += items[i].value;
-            if (out_take_fractions) out_take_fractions[items[i].id] = 1.0;
-        }
-        else {
-            double remain = capacity - current_weight;
-            double frac = remain / items[i].weight;
-            total_value += items[i].value * frac;
-            if (out_take_fractions) out_take_fractions[items[i].id] = frac;
-            break;
-        }
-    }
-    return total_value;
 }
 static void make_codes(const HuffmanTree*t,int node,char*path,int depth,char codes[256][256]){
     if(t->left[node]<0){
@@ -445,6 +390,14 @@ int libraa_huffman_decode(const HuffmanTree*t,const char*bits,char*out,size_t ca
     out[count]='\0';
     return (int)count;
 }
+/* Shared minimum-selection step for the two required greedy graph algorithms. */ static int minimum_unvisited(int n,const double *value,const bool *used,Counters *stats) {
+    int best=-1;
+    for(int i=0;i<n;++i){
+        if(stats)++stats->comparisons;
+        if(!used[i]&&isfinite(value[i])&&(best<0||value[i]<value[best]))best=i;
+    }
+    return best;
+}
 void libraa_dijkstra(int n, int src, const double* adj, double* out_dist, int* out_parent, Counters* c) {
     if(n<1||n>128||src<0||src>=n||!adj||!out_dist){
         errno=EINVAL;
@@ -463,14 +416,7 @@ void libraa_dijkstra(int n, int src, const double* adj, double* out_dist, int* o
     }
     out_dist[src] = 0.0;
     for (int count = 0; count < n - 1; ++count) {
-        double min_val = INFINITY;
-        int u = -1;
-        for (int v = 0; v < n; ++v) {
-            if (!visited[v] && out_dist[v] <= min_val) {
-                min_val = out_dist[v];
-                u = v;
-            }
-        }
+        int u=minimum_unvisited(n,out_dist,visited,c);
         if (u == -1) break;
         visited[u] = true;
         for (int v = 0; v < n; ++v) {
@@ -503,14 +449,7 @@ double libraa_prim_mst(int n, const double* adj, int* out_parent, Counters* c) {
     key[0] = 0.0;
     double total_weight = 0.0;
     for (int count = 0; count < n; ++count) {
-        double min_val = INFINITY;
-        int u = -1;
-        for (int v = 0; v < n; ++v) {
-            if (!in_mst[v] && key[v] < min_val) {
-                min_val = key[v];
-                u = v;
-            }
-        }
+        int u=minimum_unvisited(n,key,in_mst,c);
         if (u == -1 || !isfinite(key[u])) {
             errno=EINVAL;
             return NAN;
@@ -533,48 +472,49 @@ static int find_set(int parent[], int i) {
     if (parent[i] == i) return i;
     return parent[i] = find_set(parent, parent[i]);
 }
-double libraa_kruskal_mst(int n, int edge_count, const int* u, const int* v, const double* w, Counters* c) {
-    if(n<1||n>128||edge_count<0||edge_count>512||!u||!v||!w){
+typedef struct {
+    int from,to;
+    double weight;
+}
+Edge;
+static int compare_edges(const void *left,const void *right) {
+    const Edge *a=left,*b=right;
+    return (a->weight>b->weight)-(a->weight<b->weight);
+}
+double libraa_kruskal_mst(int n,int m,const int *u,const int *v,const double *weight,Counters *c) {
+    if(n<1||n>128||m<0||m>512||!u||!v||!weight){
         errno=EINVAL;
         return NAN;
     }
-    for(int i=0;i<edge_count;++i)if(u[i]<0||u[i]>=n||v[i]<0||v[i]>=n){
-        errno=EINVAL;
-        return NAN;
-    }
-    // Sort edges
-    int indices[512];
-    for (int i = 0; i < edge_count; ++i) indices[i] = i;
-    for (int i = 0; i < edge_count - 1; ++i) {
-        for (int j = 0; j < edge_count - i - 1; ++j) {
-            if (c) c->comparisons++;
-            if (w[indices[j]] > w[indices[j + 1]]) {
-                int tmp = indices[j];
-                indices[j] = indices[j + 1];
-                indices[j + 1] = tmp;
-            }
-        }
-    }
+    Edge edges[512];
     int parent[128];
-    for (int i = 0; i < n; ++i) parent[i] = i;
-    double total_weight = 0.0;
-    int edges_taken = 0;
-    for (int i = 0; i < edge_count && edges_taken < n - 1; ++i) {
-        int e = indices[i];
-        int set_u = find_set(parent, u[e]);
-        int set_v = find_set(parent, v[e]);
-        if (c) c->comparisons++;
-        if (set_u != set_v) {
-            total_weight += w[e];
-            parent[set_u] = set_v;
-            edges_taken++;
+    for(int i=0;i<m;++i){
+        if(u[i]<0||u[i]>=n||v[i]<0||v[i]>=n){
+            errno=EINVAL;
+            return NAN;
+        }
+        edges[i]=(Edge){
+            u[i],v[i],weight[i]
+        };
+    }
+    if(!merge_sort(edges,m,sizeof(Edge),compare_edges,c))return NAN;
+    for(int i=0;i<n;++i)parent[i]=i;
+    int taken=0;
+    double total=0;
+    for(int i=0;i<m&&taken<n-1;++i){
+        int a=find_set(parent,edges[i].from),b=find_set(parent,edges[i].to);
+        if(c)++c->comparisons;
+        if(a!=b){
+            parent[a]=b;
+            total+=edges[i].weight;
+            ++taken;
         }
     }
-    if(edges_taken!=n-1){
+    if(taken!=n-1){
         errno=EINVAL;
         return NAN;
     }
-    return total_weight;
+    return total;
 }
 // ============================================================================
 // 3. DYNAMIC PROGRAMMING
@@ -684,10 +624,8 @@ double libraa_optimal_bst_roots(const double* p, const double* q, int n, int* ro
             for (int r = i; r <= j; ++r) {
                 double t = e[i][r - 1] + e[r + 1][j] + w[i][j];
                 if (c) c->comparisons++;
-                /* Decimal probabilities have tiny representation differences across
-                   SSE/x87 compilers. Treat relative differences <=1e-12 as
-                   a tie; keep the first (lowest-index) root. */
-                double tolerance=1e-12*fmax(fabs(t),fabs(e[i][j]));
+                /* Decimal probabilities have tiny representation differences across                    SSE/x87 compilers. Treat relative differences <=1e-12 as                    a tie;
+                keep the first (lowest-index) root. */                 double tolerance=1e-12*fmax(fabs(t),fabs(e[i][j]));
                 if (!isfinite(e[i][j]) || t < e[i][j]-tolerance) {
                     e[i][j] = t;
                     if(roots)roots[i*(n+1)+j]=r;
@@ -697,7 +635,6 @@ double libraa_optimal_bst_roots(const double* p, const double* q, int n, int* ro
     }
     return e[1][n];
 }
-
 bool libraa_bellman_ford(int n, int m, const int* u, const int* v, const double* w, int src, double* out_dist, Counters* c) {
     if(n<1||n>128||m<0||src<0||src>=n||!out_dist||!u||!v||!w){
         errno=EINVAL;
@@ -753,7 +690,10 @@ void libraa_floyd_warshall(int n, const double* adj, double* out_dist, Counters*
             }
         }
     }
-    for(int i=0;i<n;++i)if(out_dist[i*n+i]<0){errno=EDOM;return;}
+    for(int i=0;i<n;++i)if(out_dist[i*n+i]<0){
+        errno=EDOM;
+        return;
+    }
 }
 double libraa_tsp_dp(int n,const double*g,int*path,Counters*c){
     if(n<1||n>12||!g){
@@ -871,361 +811,128 @@ int libraa_sum_of_subsets(const int* set, int n, int target_sum, int* out_soluti
     for (int i = 0; i < n; ++i) out_solution[i] = 0;
     return subset_sum_rec(set, n, 0, 0, target_sum, out_solution, c) ? 1 : 0;
 }
-static void knapsack_bt(int idx, int curr_w, int curr_v, int n, int W,                         const int* wt, const int* val, int* best_v,                         int* curr_sol, int* best_sol, Counters* c) {
-    if (curr_w > W) return;
-    if (c) c->comparisons++;
-    if (curr_v > *best_v) {
-        *best_v = curr_v;
-        for (int i = 0; i < n; ++i) best_sol[i] = curr_sol[i];
-    }
-    if (idx >= n) return;
-    // Branch 1: include item idx
-    curr_sol[idx] = 1;
-    knapsack_bt(idx + 1, curr_w + wt[idx], curr_v + val[idx], n, W, wt, val, best_v, curr_sol, best_sol, c);
-    // Branch 2: exclude item idx
-    curr_sol[idx] = 0;
-    knapsack_bt(idx + 1, curr_w, curr_v, n, W, wt, val, best_v, curr_sol, best_sol, c);
-}
-int libraa_knapsack_01_backtrack(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c) {
-    if(n<0||n>20||W<0||W>10000||(n&&(!wt||!val))){
-        errno=EINVAL;
-        return -1;
-    }
-    for(int i=0;i<n;++i)if(wt[i]<1||val[i]<0||val[i]>1000000){
-        errno=EINVAL;
-        return -1;
-    }
-    if(out_selected)memset(out_selected,0,(size_t)n*sizeof(int));
-    counters_memory(c,2*64*sizeof(int)+(size_t)(n+1)*8*sizeof(int));
-    int curr_sol[64] = {
-        0
-    };
-    int best_sol[64] = {
-        0
-    };
-    int best_v = 0;
-    knapsack_bt(0, 0, 0, n, W, wt, val, &best_v, curr_sol, best_sol, c);
-    if (out_selected) {
-        for (int i = 0; i < n; ++i) out_selected[i] = best_sol[i];
-    }
-    return best_v;
-}
 typedef struct {
-    int id;
-    int weight;
-    int value;
+    int id,weight,value;
     double ratio;
 }
 BBItem;
 typedef struct {
-    int level;
-    int weight;
-    int value;
+    int level,weight,value;
     double bound;
-    int take[64];
+    int take[20];
 }
 BBNode;
-static double calc_bound(const BBNode* u, int n, int W, const BBItem* items, Counters* c) {
-    if (u->weight >= W) return 0.0;
-    double profit_bound = (double)u->value;
-    int total_w = u->weight;
-    int j = u->level;
-    while (j < n && total_w + items[j].weight <= W) {
-        total_w += items[j].weight;
-        profit_bound += items[j].value;
-        if (c) c->comparisons++;
-        j++;
-    }
-    if (j < n) {
-        if (c) c->comparisons++;
-        profit_bound += (double)(W - total_w) * items[j].ratio;
-    }
-    return profit_bound;
+#define BB_CAPACITY 8192
+static int compare_ratios(const void *left,const void *right) {
+    const BBItem *a=left,*b=right;
+    return (a->ratio<b->ratio)-(a->ratio>b->ratio);
 }
-static void sort_bb_items(BBItem* items, int n, Counters* c) {
-    for (int i = 0; i < n - 1; ++i) {
-        for (int j = 0; j < n - i - 1; ++j) {
-            if (c) c->comparisons++;
-            if (items[j].ratio < items[j + 1].ratio) {
-                BBItem tmp = items[j];
-                items[j] = items[j + 1];
-                items[j + 1] = tmp;
-            }
-        }
-    }
-}
-// 4a. FIFO Branch-and-Bound (Queue-based)
-int libraa_knapsack_01_fifo_bb(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c) {
-    if(n<0||n>20||W<0||W>10000||(n&&(!wt||!val))){
-        errno=EINVAL;
-        return -1;
-    }
-    for(int i=0;i<n;++i)if(wt[i]<1||val[i]<0||val[i]>1000000){
-        errno=EINVAL;
-        return -1;
-    }
-    if(out_selected)memset(out_selected,0,(size_t)n*sizeof(int));
-    if (n <= 0 || W <= 0 || !wt || !val) return 0;
-    int cap = n > 64 ? 64 : n;
-    BBItem items[64];
-    for (int i = 0; i < cap; ++i) {
-        items[i].id = i;
-        items[i].weight = wt[i];
-        items[i].value = val[i];
-        items[i].ratio = (wt[i] > 0) ? ((double)val[i] / (double)wt[i]) : 0.0;
-    }
-    sort_bb_items(items, cap, c);
-    static BBNode queue[8192];
-    counters_memory(c,sizeof(queue)+sizeof(BBItem)*64+sizeof(int)*64);
-    int head = 0, tail = 0;
-    BBNode root;
-    memset(&root, 0, sizeof(root));
-    root.bound = calc_bound(&root, cap, W, items, c);
-    queue[tail++] = root;
-    int max_profit = 0;
-    int best_take[64] = {
-        0
-    };
-    while (head < tail) {
-        BBNode u = queue[head++];
-        if (c) c->comparisons++;
-        if (u.bound <= (double)max_profit || u.level >= cap) continue;
-        // Branch 1: include items[u.level]
-        if (u.weight + items[u.level].weight <= W) {
-            BBNode v1 = u;
-            v1.level = u.level + 1;
-            v1.weight += items[u.level].weight;
-            v1.value += items[u.level].value;
-            v1.take[items[u.level].id] = 1;
-            if (c) c->comparisons++;
-            if (v1.value > max_profit) {
-                max_profit = v1.value;
-                for (int i = 0; i < cap; ++i) best_take[i] = v1.take[i];
-            }
-            v1.bound = calc_bound(&v1, cap, W, items, c);
-            if (v1.bound > (double)max_profit && v1.level < cap) {
-                if(tail>=8192){
-                    errno=E2BIG;
-                    return -1;
-                }
-                queue[tail++] = v1;
-            }
-        }
-        // Branch 2: exclude items[u.level]
-        BBNode v0 = u;
-        v0.level = u.level + 1;
-        v0.take[items[u.level].id] = 0;
-        v0.bound = calc_bound(&v0, cap, W, items, c);
-        if (v0.bound > (double)max_profit && v0.level < cap) {
-            if(tail>=8192){
-                errno=E2BIG;
-                return -1;
-            }
-            queue[tail++] = v0;
-        }
-    }
-    if (out_selected) {
-        for (int i = 0; i < cap; ++i) out_selected[i] = best_take[i];
-    }
-    return max_profit;
-}
-// 4b. LIFO Branch-and-Bound (Stack-based)
-int libraa_knapsack_01_lifo_bb(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c) {
-    if(n<0||n>20||W<0||W>10000||(n&&(!wt||!val))){
-        errno=EINVAL;
-        return -1;
-    }
-    for(int i=0;i<n;++i)if(wt[i]<1||val[i]<0||val[i]>1000000){
-        errno=EINVAL;
-        return -1;
-    }
-    if(out_selected)memset(out_selected,0,(size_t)n*sizeof(int));
-    if (n <= 0 || W <= 0 || !wt || !val) return 0;
-    int cap = n > 64 ? 64 : n;
-    BBItem items[64];
-    for (int i = 0; i < cap; ++i) {
-        items[i].id = i;
-        items[i].weight = wt[i];
-        items[i].value = val[i];
-        items[i].ratio = (wt[i] > 0) ? ((double)val[i] / (double)wt[i]) : 0.0;
-    }
-    sort_bb_items(items, cap, c);
-    static BBNode stack[8192];
-    counters_memory(c,sizeof(stack)+sizeof(BBItem)*64+sizeof(int)*64);
-    int top = 0;
-    BBNode root;
-    memset(&root, 0, sizeof(root));
-    root.bound = calc_bound(&root, cap, W, items, c);
-    stack[top++] = root;
-    int max_profit = 0;
-    int best_take[64] = {
-        0
-    };
-    while (top > 0) {
-        BBNode u = stack[--top];
-        if (c) c->comparisons++;
-        if (u.bound <= (double)max_profit || u.level >= cap) continue;
-        // Exclude branch (push first so include is popped first)
-        BBNode v0 = u;
-        v0.level = u.level + 1;
-        v0.take[items[u.level].id] = 0;
-        v0.bound = calc_bound(&v0, cap, W, items, c);
-        if (v0.bound > (double)max_profit && v0.level < cap) {
-            if(top>=8192){
-                errno=E2BIG;
-                return -1;
-            }
-            stack[top++] = v0;
-        }
-        // Include branch
-        if (u.weight + items[u.level].weight <= W) {
-            BBNode v1 = u;
-            v1.level = u.level + 1;
-            v1.weight += items[u.level].weight;
-            v1.value += items[u.level].value;
-            v1.take[items[u.level].id] = 1;
-            if (c) c->comparisons++;
-            if (v1.value > max_profit) {
-                max_profit = v1.value;
-                for (int i = 0; i < cap; ++i) best_take[i] = v1.take[i];
-            }
-            v1.bound = calc_bound(&v1, cap, W, items, c);
-            if (v1.bound > (double)max_profit && v1.level < cap) {
-                if(top>=8192){
-                    errno=E2BIG;
-                    return -1;
-                }
-                stack[top++] = v1;
-            }
-        }
-    }
-    if (out_selected) {
-        for (int i = 0; i < cap; ++i) out_selected[i] = best_take[i];
-    }
-    return max_profit;
-}
-// 4c. Least-Cost / Best-First Branch-and-Bound (Priority Queue)
-static void heap_push(BBNode* heap, int* size, BBNode node, Counters* c) {
-    int i = (*size)++;
-    while (i > 0) {
-        int parent = (i - 1) / 2;
-        if (c) c->comparisons++;
-        if (heap[parent].bound < node.bound) {
-            heap[i] = heap[parent];
-            i = parent;
+/* Fractional relaxation is only a bound, not a second whole-book optimizer. */ static double upper_bound(const BBNode *node,int n,int W,const BBItem *items,Counters *s) {
+    double value=node->value;
+    int weight=node->weight;
+    for(int j=node->level;j<n;++j){
+        if(s)++s->comparisons;
+        if(weight+items[j].weight<=W){
+            weight+=items[j].weight;
+            value+=items[j].value;
         }
         else {
+            value+=(W-weight)*items[j].ratio;
             break;
         }
     }
-    heap[i] = node;
+    return value;
 }
-static BBNode heap_pop(BBNode* heap, int* size, Counters* c) {
-    BBNode top = heap[0];
-    BBNode last = heap[--(*size)];
-    if (*size > 0) {
-        int i = 0;
-        while (2 * i + 1 < *size) {
-            int left = 2 * i + 1;
-            int right = 2 * i + 2;
-            int best = left;
-            if (right < *size) {
-                if (c) c->comparisons++;
-                if (heap[right].bound > heap[left].bound) best = right;
-            }
-            if (c) c->comparisons++;
-            if (last.bound < heap[best].bound) {
-                heap[i] = heap[best];
-                i = best;
-            }
-            else {
-                break;
-            }
+/* The only difference among FIFO/LIFO/best-bound is frontier access. */ static int push_node(BBNode *pending,int *count,int head,BBOrder order,BBNode node,Counters *s) {
+    if(*count==BB_CAPACITY){
+        errno=E2BIG;
+        return 0;
+    }
+    if(order==BB_FIFO)pending[(head+(*count)++)%BB_CAPACITY]=node;
+    else if(order==BB_LIFO)pending[(*count)++]=node;
+    else {
+        int i=(*count)++;
+        while(i>0){
+            int parent=(i-1)/2;
+            if(s)++s->comparisons;
+            if(pending[parent].bound>=node.bound)break;
+            pending[i]=pending[parent];
+            i=parent;
         }
-        heap[i] = last;
+        pending[i]=node;
     }
-    return top;
+    return 1;
 }
-int libraa_knapsack_01_least_cost_bb(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c) {
-    if(n<0||n>20||W<0||W>10000||(n&&(!wt||!val))){
+static BBNode pop_node(BBNode *pending,int *count,int *head,BBOrder order,Counters *s) {
+    if(order==BB_FIFO){
+        BBNode node=pending[*head];
+        *head=(*head+1)%BB_CAPACITY;
+        --*count;
+        return node;
+    }
+    if(order==BB_LIFO)return pending[--*count];
+    BBNode first=pending[0],last=pending[--*count];
+    int i=0;
+    while(2*i+1<*count){
+        int child=2*i+1;
+        if(child+1<*count&&pending[child+1].bound>pending[child].bound)++child;
+        if(s)++s->comparisons;
+        if(last.bound>=pending[child].bound)break;
+        pending[i]=pending[child];
+        i=child;
+    }
+    if(*count)pending[i]=last;
+    return first;
+}
+int libraa_knapsack_01_bb(int n,int W,const int *wt,const int *val,int *selected,BBOrder order,Counters *s) {
+    if(n<0||n>20||W<0||W>10000||(n&&(!wt||!val))||order<BB_FIFO||order>BB_BEST_BOUND){
         errno=EINVAL;
         return -1;
     }
-    for(int i=0;i<n;++i)if(wt[i]<1||val[i]<0||val[i]>1000000){
-        errno=EINVAL;
-        return -1;
+    BBItem items[20];
+    for(int i=0;i<n;++i){
+        if(wt[i]<1||wt[i]>10000||val[i]<0||val[i]>1000000){
+            errno=EINVAL;
+            return -1;
+        }
+        items[i]=(BBItem){
+            i,wt[i],val[i],(double)val[i]/wt[i]
+        };
     }
-    if(out_selected)memset(out_selected,0,(size_t)n*sizeof(int));
-    if (n <= 0 || W <= 0 || !wt || !val) return 0;
-    int cap = n > 64 ? 64 : n;
-    BBItem items[64];
-    for (int i = 0; i < cap; ++i) {
-        items[i].id = i;
-        items[i].weight = wt[i];
-        items[i].value = val[i];
-        items[i].ratio = (wt[i] > 0) ? ((double)val[i] / (double)wt[i]) : 0.0;
-    }
-    sort_bb_items(items, cap, c);
-    static BBNode heap[8192];
-    counters_memory(c,sizeof(heap)+sizeof(BBItem)*64+sizeof(int)*64);
-    int heap_size = 0;
-    BBNode root;
-    memset(&root, 0, sizeof(root));
-    root.bound = calc_bound(&root, cap, W, items, c);
-    heap_push(heap, &heap_size, root, c);
-    int max_profit = 0;
-    int best_take[64] = {
+    if(selected)memset(selected,0,(size_t)n*sizeof(int));
+    if(!merge_sort(items,n,sizeof(BBItem),compare_ratios,s))return -1;
+    static BBNode pending[BB_CAPACITY];
+    counters_memory(s,sizeof(pending)+sizeof(items));
+    int count=0,head=0,best=0;
+    BBNode root={
         0
     };
-    while (heap_size > 0) {
-        BBNode u = heap_pop(heap, &heap_size, c);
-        if (c) c->comparisons++;
-        // If highest bound in heap cannot beat max_profit, optimal solution is guaranteed!
-        if (u.bound <= (double)max_profit) break;
-        if (u.level >= cap) continue;
-        // Include branch
-        if (u.weight + items[u.level].weight <= W) {
-            BBNode v1 = u;
-            v1.level = u.level + 1;
-            v1.weight += items[u.level].weight;
-            v1.value += items[u.level].value;
-            v1.take[items[u.level].id] = 1;
-            if (c) c->comparisons++;
-            if (v1.value > max_profit) {
-                max_profit = v1.value;
-                for (int i = 0; i < cap; ++i) best_take[i] = v1.take[i];
+    root.bound=upper_bound(&root,n,W,items,s);
+    if(!push_node(pending,&count,head,order,root,s))return -1;
+    while(count){
+        BBNode node=pop_node(pending,&count,&head,order,s);
+        if(s)++s->comparisons;
+        if(node.bound<=best||node.level>=n)continue;
+        BBNode skip=node;
+        skip.level++;
+        skip.bound=upper_bound(&skip,n,W,items,s);
+        if(skip.bound>best&&!push_node(pending,&count,head,order,skip,s))return -1;
+        BBItem item=items[node.level];
+        if(node.weight+item.weight<=W){
+            node.level++;
+            node.weight+=item.weight;
+            node.value+=item.value;
+            node.take[item.id]=1;
+            if(node.value>best){
+                best=node.value;
+                if(selected)memcpy(selected,node.take,(size_t)n*sizeof(int));
             }
-            v1.bound = calc_bound(&v1, cap, W, items, c);
-            if (v1.bound > (double)max_profit && v1.level < cap) {
-                if(heap_size>=8192){
-                    errno=E2BIG;
-                    return -1;
-                }
-                heap_push(heap, &heap_size, v1, c);
-            }
-        }
-        // Exclude branch
-        BBNode v0 = u;
-        v0.level = u.level + 1;
-        v0.take[items[u.level].id] = 0;
-        v0.bound = calc_bound(&v0, cap, W, items, c);
-        if (v0.bound > (double)max_profit && v0.level < cap) {
-            if(heap_size>=8192){
-                errno=E2BIG;
-                return -1;
-            }
-            heap_push(heap, &heap_size, v0, c);
+            node.bound=upper_bound(&node,n,W,items,s);
+            if(node.bound>best&&!push_node(pending,&count,head,order,node,s))return -1;
         }
     }
-    if (out_selected) {
-        for (int i = 0; i < cap; ++i) out_selected[i] = best_take[i];
-    }
-    return max_profit;
+    return best;
 }
-
-// ============================================================================
-// 5. FLOW AND MATCHING
-// ============================================================================
 static bool bfs_flow(int n, const int* r_graph, int s, int t, int* parent, Counters* c) {
     bool visited[64] = {
         false

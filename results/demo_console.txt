@@ -1,6 +1,6 @@
 1 NORMAL: identical catalog and query 'sorting'
 Naive: hits=3, agreement=1, median_us=0, modeled_aux_bytes=48
-KMP: hits=3, agreement=1, median_us=1, modeled_aux_bytes=48
+KMP: hits=3, agreement=1, median_us=0, modeled_aux_bytes=48
 2 SHOCK: reading budget falls from 10 to 5 hours
 Book 1: introduction to algorithms, 4 hours, value 9
 Book 2: data structures, 3 hours, value 7
@@ -11,15 +11,13 @@ Book 6: python basics, 2 hours, value 4
 Book 7: graph theory, 3 hours, value 8
 Book 8: machine learning, 5 hours, value 7
 W=10 DP: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=396; IDs: 1 2 7
-W=10 Backtracking: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=800; IDs: 1 2 7
-W=10 FIFO B&B: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=2295552; IDs: 1 2 7
-W=10 LIFO B&B: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=2295552; IDs: 1 2 7
-W=10 Best-bound B&B: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=2295552; IDs: 1 2 7
+W=10 FIFO B&B: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=852448; IDs: 1 2 7
+W=10 LIFO B&B: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=852448; IDs: 1 2 7
+W=10 Best-bound B&B: value=24, feasible/optimal=1, median_us=0, modeled_aux_bytes=852448; IDs: 1 2 7
 W=5 DP: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=216; IDs: 6 7
-W=5 Backtracking: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=800; IDs: 6 7
-W=5 FIFO B&B: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=2295552; IDs: 6 7
-W=5 LIFO B&B: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=2295552; IDs: 6 7
-W=5 Best-bound B&B: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=2295552; IDs: 6 7
+W=5 FIFO B&B: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=852448; IDs: 6 7
+W=5 LIFO B&B: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=852448; IDs: 6 7
+W=5 Best-bound B&B: value=12, feasible/optimal=1, median_us=0, modeled_aux_bytes=852448; IDs: 6 7
 Copy shock: three requests, up to six CSV copies per first/second title; remove final copy.
 copies=3 matching=3 flow=3 agreement=1 unmet=0 median_us=0/0 modeled_aux_bytes=320/17408
 reader 1 -> copy 0 of book 1

@@ -21,13 +21,6 @@ Activity;
 int libraa_activity_selection(Activity* activities, int n, int* out_selected, Counters* c);
 int libraa_interval_partitioning(const Activity* intervals, int n, int* out_room_assigned, Counters* c);
 typedef struct {
-    int id;
-    double weight;
-    double value;
-}
-KnapsackItem;
-double libraa_fractional_knapsack(KnapsackItem* items, int n, double capacity, double* out_take_fractions, Counters* c);
-typedef struct {
     int left[511],right[511],symbol[511],root;
 }
 HuffmanTree;
@@ -46,10 +39,11 @@ double libraa_tsp_dp(int n, const double* dist_matrix, int* out_path, Counters* 
 // 4. Backtracking & Branch and Bound
 int libraa_nqueens(int n, int* out_first_solution, Counters* c);
 int libraa_sum_of_subsets(const int* set, int n, int target_sum, int* out_solution, Counters* c);
-int libraa_knapsack_01_backtrack(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c);
-int libraa_knapsack_01_fifo_bb(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c);
-int libraa_knapsack_01_lifo_bb(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c);
-int libraa_knapsack_01_least_cost_bb(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c);
+typedef enum {
+    BB_FIFO,BB_LIFO,BB_BEST_BOUND
+}
+BBOrder;
+int libraa_knapsack_01_bb(int n,int W,const int *wt,const int *val,int *selected,BBOrder order,Counters *stats);
 // 5. Flow and Matching
 int libraa_ford_fulkerson(int n, const int* cap_matrix, int src, int sink, Counters* c);
 int libraa_max_bipartite_matching(int left_count, int right_count, const int* adj, int* out_match, Counters* c);

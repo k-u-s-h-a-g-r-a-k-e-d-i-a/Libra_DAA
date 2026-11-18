@@ -41,70 +41,26 @@ void library_init(Library *lib) {
 }
 void library_free(Library *lib) {
     free(lib->books);
-    free(lib->ids);
     free(lib->index);
     library_init(lib);
 }
-/* Merge sorts for the three record types. No qsort or external sort is used. */ static void merge_books(Book *a,Book *tmp,int lo,int hi) {
-    int mid,i,j,k;
-    if(hi-lo<2)return;
-    mid=lo+(hi-lo)/2;
-    merge_books(a,tmp,lo,mid);
-    merge_books(a,tmp,mid,hi);
-    i=lo;
-    j=mid;
-    k=lo;
-    while(i<mid&&j<hi)tmp[k++]=a[i].id<=a[j].id?a[i++]:a[j++];
-    while(i<mid)tmp[k++]=a[i++];
-    while(j<hi)tmp[k++]=a[j++];
-    for(k=lo;k<hi;++k)a[k]=tmp[k];
+/* These functions only define ordering. All sorting calls merge_sort(). */ static int compare_books(const void *left,const void *right) {
+    const Book *a=left,*b=right;
+    return (a->id>b->id)-(a->id<b->id);
 }
-static int entry_before(const IndexEntry *a,const IndexEntry *b) {
-    int cmp=strcmp(a->word,b->word);
-    return cmp<0 || (cmp==0 && a->book_id<=b->book_id);
+static int compare_words(const void *left,const void *right) {
+    const IndexEntry *a=left,*b=right;
+    return strcmp(a->word,b->word);
 }
-static void merge_index(IndexEntry*a,IndexEntry*tmp,int lo,int hi) {
-    int mid,i,j,k;
-    if(hi-lo<2)return;
-    mid=lo+(hi-lo)/2;
-    merge_index(a,tmp,lo,mid);
-    merge_index(a,tmp,mid,hi);
-    i=lo;
-    j=mid;
-    k=lo;
-    while(i<mid&&j<hi)tmp[k++]=entry_before(&a[i],&a[j])?a[i++]:a[j++];
-    while(i<mid)tmp[k++]=a[i++];
-    while(j<hi)tmp[k++]=a[j++];
-    for(k=lo;k<hi;++k)a[k]=tmp[k];
+static int compare_entries(const void *left,const void *right) {
+    const IndexEntry *a=left,*b=right;
+    int order=compare_words(a,b);
+    return order?order:(a->book_id>b->book_id)-(a->book_id<b->book_id);
 }
-static int hit_before(Hit a,Hit b) {
-    return a.score>b.score || (a.score==b.score && a.id<=b.id);
-}
-static void merge_hits(Hit*a,Hit*tmp,int lo,int hi,Counters*s) {
-    int mid,i,j,k;
-    if(hi-lo<2)return;
-    mid=lo+(hi-lo)/2;
-    merge_hits(a,tmp,lo,mid,s);
-    merge_hits(a,tmp,mid,hi,s);
-    i=lo;
-    j=mid;
-    k=lo;
-    while(i<mid&&j<hi){
-        if(s)++s->comparisons;
-        tmp[k++]=hit_before(a[i],a[j])?a[i++]:a[j++];
-    }
-    while(i<mid)tmp[k++]=a[i++];
-    while(j<hi)tmp[k++]=a[j++];
-    for(k=lo;k<hi;++k)a[k]=tmp[k];
-}
-static int rank_hits(Hit*a,int n,Counters*s){
-    if(n<2)return 1;
-    Hit*tmp=malloc((size_t)n*sizeof(*tmp));
-    if(!tmp)return 0;
-    counters_memory(s,(size_t)n*sizeof(*tmp));
-    merge_hits(a,tmp,0,n,s);
-    free(tmp);
-    return 1;
+static int compare_hits(const void *left,const void *right) {
+    const Hit *a=left,*b=right;
+    if(a->score!=b->score)return a->score>b->score?-1:1;
+    return (a->id>b->id)-(a->id<b->id);
 }
 static int csv_fields(const char *line,char fields[9][2050]) {
     int field=0,quoted=0,closed=0;
@@ -164,19 +120,17 @@ static int copy_text(char *out,size_t cap,const char*in){
 static int build_index(Library*lib){
     int count=0;
     for(int i=0;i<lib->count;++i)count+=lib->books[i].keyword_count;
-    IndexEntry *entries=malloc((size_t)count*sizeof(*entries)),*tmp=malloc((size_t)count*sizeof(*tmp));
-    if(!entries||!tmp){
-        free(entries);
-        free(tmp);
-        return 0;
-    }
+    IndexEntry *entries=malloc((size_t)count*sizeof(*entries));
+    if(!entries)return 0;
     int at=0;
     for(int i=0;i<lib->count;++i)for(int k=0;k<lib->books[i].keyword_count;++k){
         strcpy(entries[at].word,lib->books[i].keywords[k]);
         entries[at++].book_id=lib->books[i].id;
     }
-    merge_index(entries,tmp,0,count);
-    free(tmp);
+    if(!merge_sort(entries,count,sizeof(*entries),compare_entries,NULL)){
+        free(entries);
+        return 0;
+    }
     lib->index=entries;
     lib->index_count=count;
     return 1;
@@ -233,14 +187,8 @@ int library_load(Library*lib,const char*path,char*error,size_t cap){
         fresh.books[fresh.count++]=b;
     }
     if(ferror(file)||!fresh.count)goto fail;
-    Book *tmp=malloc((size_t)fresh.count*sizeof(Book));
-    if(!tmp)goto fail;
-    merge_books(fresh.books,tmp,0,fresh.count);
-    free(tmp);
+    if(!merge_sort(fresh.books,fresh.count,sizeof(Book),compare_books,NULL))goto fail;
     for(int i=1;i<fresh.count;++i)if(fresh.books[i-1].id==fresh.books[i].id)goto fail;
-    fresh.ids=malloc((size_t)fresh.count*sizeof(int));
-    if(!fresh.ids)goto fail;
-    for(int i=0;i<fresh.count;++i)fresh.ids[i]=fresh.books[i].id;
     if(!build_index(&fresh))goto fail;
     fresh.reader_count=1;
     fresh.readers[0].id=101;
@@ -268,27 +216,28 @@ int library_load(Library*lib,const char*path,char*error,size_t cap){
     }
     return ok;
 }
-/* Reuse the same two mandatory implementations used by tests/benchmarks.
-   The IDs are built once at load, so each lookup stays O(log n). */
 const Book *find_book(const Library *lib,int id,int recursive) {
-    int at=recursive ? binary_rec(lib->ids,lib->count,id,NULL)
-                     : binary_iter(lib->ids,lib->count,id,NULL);
+    Book key={
+        0
+    };
+    key.id=id;
+    int at=recursive ? binary_rec(lib->books,lib->count,sizeof(Book),&key,compare_books,NULL)                      : binary_iter(lib->books,lib->count,sizeof(Book),&key,compare_books,NULL);
     return at<0 ? NULL : &lib->books[at];
 }
-int keyword_lookup(const Library*lib,const char*raw,int*ids,int cap){
-    char word[129];
-    int lo=0,hi=lib->index_count,count=0;
-    if(strlen(raw)>128||cap<0)return -1;
-    strcpy(word,raw);
-    normalize(word);
-    /* lower_bound: first index entry whose word is not smaller than query. */     while(lo<hi){
-        int mid=lo+(hi-lo)/2;
-        if(strcmp(lib->index[mid].word,word)<0)lo=mid+1;
-        else hi=mid;
-    }
-    while(lo<lib->index_count&&strcmp(lib->index[lo].word,word)==0){
-        if(count>=cap)return -1;
-        ids[count++]=lib->index[lo++].book_id;
+int keyword_lookup(const Library *lib,const char *raw,int *ids,int cap) {
+    IndexEntry key={
+        0
+    };
+    int count=0;
+    if(strlen(raw)>=sizeof(key.word)||cap<0)return -1;
+    strcpy(key.word,raw);
+    normalize(key.word);
+    int at=binary_iter(lib->index,lib->index_count,sizeof(IndexEntry),&key,compare_words,NULL);
+    if(at<0)return 0;
+    while(at>0&&strcmp(lib->index[at-1].word,key.word)==0)--at;
+    while(at<lib->index_count&&strcmp(lib->index[at].word,key.word)==0) {
+        if(count==cap)return -1;
+        ids[count++]=lib->index[at++].book_id;
     }
     return count;
 }
@@ -310,7 +259,7 @@ int search_books(const Library*lib,const char*raw,Matcher engine,Hit*hits,int ca
             b->id,score
         };
     }
-    if(!rank_hits(hits,count,s))return -1;
+    if(!merge_sort(hits,count,sizeof(Hit),compare_hits,s))return -1;
     return count;
 }
 int recommend_books(const Library*lib,int id,Hit*hits,int cap){
@@ -333,7 +282,7 @@ int recommend_books(const Library*lib,int id,Hit*hits,int cap){
             b->id,score
         };
     }
-    if(!rank_hits(hits,count,NULL))return -1;
+    if(!merge_sort(hits,count,sizeof(Hit),compare_hits,NULL))return -1;
     return count>5?5:count;
 }
 static void csv_quote(FILE*f,const char*s){

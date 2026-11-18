@@ -1,4 +1,5 @@
 #include "algorithms.h"
+#include "workbench.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +53,7 @@ size_t match_text(const char *t, const char *p, Matcher e,                   siz
     if (e == RABIN_KARP) {
         const long long base = 256, prime = 1000000007;
         long long high = 1, ph = 0, th = 0;
-        for (j = 1; j < m; ++j) high = high * base % prime;
+        high = libraa_fast_pow_mod(base,(long long)m-1,prime,s);
         for (j = 0; j < m; ++j) {
             ph = (ph * base + (unsigned char)p[j]) % prime;
             th = (th * base + (unsigned char)t[j]) % prime;
@@ -128,85 +129,117 @@ size_t match_text(const char *t, const char *p, Matcher e,                   siz
     free(lps);
     return count;
 }
-int binary_iter(const int *a, int n, int key, Counters *s) {
-    int lo = 0, hi = n-1;
-    while (lo <= hi) {
-        int mid = lo + (hi-lo)/2;
+int compare_ints(const void *a,const void *b) {
+    int x=*(const int*)a,y=*(const int*)b;
+    return (x>y)-(x<y);
+}
+int binary_iter(const void *array,int n,size_t width,const void *key,Compare compare,Counters *s) {
+    if(n<0||!width||!compare||!key||(n&&!array)){
+        errno=EINVAL;
+        return -1;
+    }
+    const unsigned char *a=array;
+    int lo=0,hi=n-1;
+    while(lo<=hi) {
+        int mid=lo+(hi-lo)/2;
+        int order=compare(key,a+(size_t)mid*width);
         step(s);
-        if (a[mid] == key) return mid;
-        if (a[mid] < key) lo = mid+1;
-        else hi = mid-1;
+        if(order==0)return mid;
+        if(order>0)lo=mid+1;
+        else hi=mid-1;
     }
     return -1;
 }
-static int find_rec(const int *a, int lo, int hi, int key, Counters *s, size_t depth) {
-    int mid;
-    counters_memory(s, depth * 4 * sizeof(int));
-    if (lo > hi) return -1;
-    mid = lo + (hi-lo)/2;
+static int find_rec(const unsigned char *a,int lo,int hi,size_t width,const void *key,Compare compare,Counters *s,size_t depth) {
+    counters_memory(s,depth*4*sizeof(int));
+    if(lo>hi)return -1;
+    int mid=lo+(hi-lo)/2;
+    int order=compare(key,a+(size_t)mid*width);
     step(s);
-    if (a[mid] == key) return mid;
-    if (a[mid] < key) return find_rec(a, mid+1, hi, key, s, depth+1);
-    return find_rec(a, lo, mid-1, key, s, depth+1);
+    if(order==0)return mid;
+    if(order>0)return find_rec(a,mid+1,hi,width,key,compare,s,depth+1);
+    return find_rec(a,lo,mid-1,width,key,compare,s,depth+1);
 }
-int binary_rec(const int *a, int n, int key, Counters *s) {
-    return find_rec(a, 0, n-1, key, s, 1);
-}
-static void merge_range(int *a, int *tmp, int lo, int hi, Counters *s) {
-    int mid, i, j, k;
-    if (hi-lo < 2) return;
-    mid = lo + (hi-lo)/2;
-    merge_range(a, tmp, lo, mid, s);
-    merge_range(a, tmp, mid, hi, s);
-    i=lo;
-    j=mid;
-    k=lo;
-    while (i<mid && j<hi) {
-        step(s);
-        tmp[k++] = a[i]<=a[j] ? a[i++] : a[j++];
+int binary_rec(const void *array,int n,size_t width,const void *key,Compare compare,Counters *s) {
+    if(n<0||!width||!compare||!key||(n&&!array)){
+        errno=EINVAL;
+        return -1;
     }
-    while (i<mid) tmp[k++]=a[i++];
-    while (j<hi) tmp[k++]=a[j++];
-    for (k=lo; k<hi; ++k) a[k]=tmp[k];
+    return find_rec(array,0,n-1,width,key,compare,s,1);
 }
-int merge_ints(int *a, int n, Counters *s) {
-    int *tmp;
-    if (n<0 || (n && !a)) return 0;
-    if (n<2) return 1;
-    tmp=malloc((size_t)n*sizeof(*tmp));
-    if (!tmp) return 0;
-    counters_memory(s, (size_t)n*sizeof(*tmp));
-    merge_range(a,tmp,0,n,s);
+static void merge_range(unsigned char *a,unsigned char *tmp,int lo,int hi,size_t width,Compare compare,Counters *s) {
+    if(hi-lo<2)return;
+    int mid=lo+(hi-lo)/2;
+    merge_range(a,tmp,lo,mid,width,compare,s);
+    merge_range(a,tmp,mid,hi,width,compare,s);
+    int i=lo,j=mid,k=lo;
+    while(i<mid&&j<hi) {
+        step(s);
+        int next=compare(a+(size_t)i*width,a+(size_t)j*width)<=0?i++:j++;
+        memcpy(tmp+(size_t)k++*width,a+(size_t)next*width,width);
+    }
+    while(i<mid)memcpy(tmp+(size_t)k++*width,a+(size_t)i++*width,width);
+    while(j<hi)memcpy(tmp+(size_t)k++*width,a+(size_t)j++*width,width);
+    memcpy(a+(size_t)lo*width,tmp+(size_t)lo*width,(size_t)(hi-lo)*width);
+}
+int merge_sort(void *array,int n,size_t width,Compare compare,Counters *s) {
+    if(n<0||!width||!compare||(n&&!array)||(size_t)n>(size_t)-1/width){
+        errno=EINVAL;
+        return 0;
+    }
+    if(n<2)return 1;
+    unsigned char *tmp=malloc((size_t)n*width);
+    if(!tmp){
+        errno=ENOMEM;
+        return 0;
+    }
+    counters_memory(s,(size_t)n*width);
+    merge_range(array,tmp,0,n,width,compare,s);
     free(tmp);
     return 1;
 }
-static void quick_range(int *a, int lo, int hi, Counters *s, size_t depth) {
-    counters_memory(s, depth*6*sizeof(int));
-    while (lo<hi) {
-        int i=lo, j=hi, pivot=a[lo+(hi-lo)/2];
-        while (i<=j) {
-            while ((step(s), a[i]<pivot)) ++i;
-            while ((step(s), a[j]>pivot)) --j;
-            if (i<=j) {
-                int t=a[i];
-                a[i]=a[j];
-                a[j]=t;
+static void quick_range(unsigned char *a,int lo,int hi,size_t width,Compare compare,unsigned char *pivot,unsigned char *tmp,Counters *s,size_t depth) {
+    counters_memory(s,2*width+depth*6*sizeof(int));
+    while(lo<hi) {
+        int i=lo,j=hi;
+        memcpy(pivot,a+(size_t)(lo+(hi-lo)/2)*width,width);
+        while(i<=j) {
+            while((step(s),compare(a+(size_t)i*width,pivot)<0))++i;
+            while((step(s),compare(a+(size_t)j*width,pivot)>0))--j;
+            if(i<=j) {
+                if(i<j) {
+                    memcpy(tmp,a+(size_t)i*width,width);
+                    memcpy(a+(size_t)i*width,a+(size_t)j*width,width);
+                    memcpy(a+(size_t)j*width,tmp,width);
+                }
                 ++i;
                 --j;
             }
         }
-        if (j-lo<hi-i) {
-            if (lo<j) quick_range(a,lo,j,s,depth+1);
+        if(j-lo<hi-i){
+            if(lo<j)quick_range(a,lo,j,width,compare,pivot,tmp,s,depth+1);
             lo=i;
         }
         else {
-            if (i<hi) quick_range(a,i,hi,s,depth+1);
+            if(i<hi)quick_range(a,i,hi,width,compare,pivot,tmp,s,depth+1);
             hi=j;
         }
     }
 }
-void quick_ints(int *a, int n, Counters *s) {
-    if (a && n>1) quick_range(a,0,n-1,s,1);
+int quick_sort(void *array,int n,size_t width,Compare compare,Counters *s) {
+    if(n<0||!width||width>(size_t)-1/2||!compare||(n&&!array)||(size_t)n>(size_t)-1/width){
+        errno=EINVAL;
+        return 0;
+    }
+    if(n<2)return 1;
+    unsigned char *workspace=malloc(2*width);
+    if(!workspace){
+        errno=ENOMEM;
+        return 0;
+    }
+    quick_range(array,0,n-1,width,compare,workspace,workspace+width,s,1);
+    free(workspace);
+    return 1;
 }
 int lcs(const char *a, const char *b, char *out, size_t cap, Counters *s) {
     size_t n, m, i, j, width;
