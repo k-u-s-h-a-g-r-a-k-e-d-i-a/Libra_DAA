@@ -6,3 +6,7 @@ Clock: CLOCK_MONOTONIC, microseconds, instrumentation enabled
 One discarded warm-up, five repetitions. Memory is modeled auxiliary payload.
 64/64 benchmark rows have correct=1.
 Windows/MinGW GCC 6.3 compatibility target; not executed here. CMake not executed.
+
+Windows portability fix: explicit time.h; deterministic near-equal OBST ties; independent tree witness.
+Native and x87-style (-mfpmath=387 -fexcess-precision=fast) strict builds: 5691/5691 pass.
+ASan/UBSan updated suite: 5691/5691 pass (leak detection disabled as documented).

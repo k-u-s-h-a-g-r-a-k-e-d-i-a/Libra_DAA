@@ -703,12 +703,16 @@ double libraa_optimal_bst_roots(const double* p, const double* q, int n, int* ro
     for (int l = 1; l <= n; ++l) {
         for (int i = 1; i <= n - l + 1; ++i) {
             int j = i + l - 1;
-            e[i][j] = 1e12;
+            e[i][j] = INFINITY;
             w[i][j] = w[i][j - 1] + p[j - 1] + q[j];
             for (int r = i; r <= j; ++r) {
                 double t = e[i][r - 1] + e[r + 1][j] + w[i][j];
                 if (c) c->comparisons++;
-                if (t < e[i][j]) {
+                /* Decimal probabilities have tiny representation differences across
+                   SSE/x87 compilers. Treat relative differences <=1e-12 as
+                   a tie; keep the first (lowest-index) root. */
+                double tolerance=1e-12*fmax(fabs(t),fabs(e[i][j]));
+                if (!isfinite(e[i][j]) || t < e[i][j]-tolerance) {
                     e[i][j] = t;
                     if(roots)roots[i*(n+1)+j]=r;
                 }

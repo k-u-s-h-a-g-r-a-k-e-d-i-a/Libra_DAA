@@ -1,8 +1,12 @@
 Release C11 build: no warnings.
-5689 test assertions, zero failures.
+5691 test assertions, zero failures.
 AddressSanitizer + UndefinedBehaviorSanitizer: suite and lab passed; LeakSanitizer disabled due to runtime restriction.
 64/64 benchmark rows verified.
 Interactive search/ID/keyword/recommendation/export, invalid inputs, EOF and executable-directory fallback checked.
 IDE task/launch JSON syntax verified; actual IDE buttons not exercised.
 No C++ source/header files or C++ runtime dependencies.
 Windows execution remains to be verified on the evaluation laptop.
+
+Windows portability fix: explicit time.h; deterministic near-equal OBST ties; independent tree witness.
+Native and x87-style (-mfpmath=387 -fexcess-precision=fast) strict builds: 5691/5691 pass.
+ASan/UBSan updated suite: 5691/5691 pass (leak detection disabled as documented).

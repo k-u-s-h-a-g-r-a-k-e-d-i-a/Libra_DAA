@@ -78,7 +78,7 @@ Some C workbench routines deliberately use quadratic sorts for tiny bounded fixt
 - Huffman creates actual tree codes and decodes back to input; singleton/four-symbol cases verify payload lengths.
 - Padded Strassen agrees with classical at 1..11 matrix sizes, including odd and non-power-of-two dimensions.
 - Dijkstra/Bellman-Ford/Floyd agree on the same infinity-encoded graph; zero-weight edges, reachable negative cycles and disconnected MSTs are covered.
-- OBST verifies cost and chosen root. TSP verifies complete routes and exact costs, including n=11/12 and an out-of-range rejection.
+- OBST verifies the expected cost, recursively recomputes the returned tree cost, and checks deterministic tie handling. Relative differences <=1e-12 keep the first root; this avoids SSE/x87 platform-dependent optimal ties. TSP verifies complete routes and exact costs, including n=11/12 and an out-of-range rejection.
 - Queens/subset witnesses satisfy constraints; matching agrees with independent exhaustive assignment and equivalent unit-capacity max-flow.
 - CSV tests cover quoting, exports, invalid copies and transactional replacement; the included sample is a fixed regression fixture.
 

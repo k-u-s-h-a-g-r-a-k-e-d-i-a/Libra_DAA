@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #ifdef _WIN32
 #include <direct.h>
 #else
@@ -46,6 +47,16 @@ static int feasible(int n,int W,const int*wt,const int*val,const int*chosen,int 
         }
     }
     return v==result&&w<=W;
+}
+/* Verify the returned BST itself, independent of the DP cost table. */
+static double bst_witness_cost(const double *p,const double *q,const int *roots,
+                              int lo,int hi,int depth,int stride) {
+    if(lo>hi)return q[hi]*depth;
+    int r=roots[lo*stride+hi];
+    if(r<lo||r>hi)return NAN;
+    return p[r-1]*depth
+        +bst_witness_cost(p,q,roots,lo,r-1,depth+1,stride)
+        +bst_witness_cost(p,q,roots,r+1,hi,depth+1,stride);
 }
 int run_tests(FILE*out){
     checks=failures=0;
@@ -233,7 +244,10 @@ int run_tests(FILE*out){
         .05,.10,.05,.05,.05,.10
     };
     int roots[36];
-    CHECK(fabs(libraa_optimal_bst_roots(hit,miss,5,roots,NULL)-2.75)<1e-9&&roots[11]==2,"OBST cost and root");
+    double bst_cost=libraa_optimal_bst_roots(hit,miss,5,roots,NULL);
+    CHECK(fabs(bst_cost-2.75)<1e-9,"OBST optimal cost");
+    CHECK(fabs(bst_witness_cost(hit,miss,roots,1,5,1,6)-bst_cost)<1e-9,"OBST returned tree achieves reported cost");
+    CHECK(roots[11]==2,"OBST near-equal ties keep the first root deterministically");
     for(int n=1;n<=12;++n){
         double d[144];
         int path[13],seen[12]={
