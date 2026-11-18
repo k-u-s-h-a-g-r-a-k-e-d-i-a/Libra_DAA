@@ -71,31 +71,7 @@ int libraa_max_subarray_dc(const int* arr, int low, int high, int* out_start, in
         return cross_sum;
     }
 }
-int libraa_max_subarray_kadane(const int* arr, int n, int* out_start, int* out_end, Counters* c) {
-    if (!arr || n <= 0) return 0;
-    int max_so_far = arr[0];
-    int curr_max = arr[0];
-    int start = 0, end = 0, s = 0;
-    for (int i = 1; i < n; ++i) {
-        if (c) c->comparisons++;
-        if (arr[i] > curr_max + arr[i]) {
-            curr_max = arr[i];
-            s = i;
-        }
-        else {
-            curr_max += arr[i];
-        }
-        if (c) c->comparisons++;
-        if (curr_max > max_so_far) {
-            max_so_far = curr_max;
-            start = s;
-            end = i;
-        }
-    }
-    if (out_start) *out_start = start;
-    if (out_end) *out_end = end;
-    return max_so_far;
-}
+
 long long libraa_fast_pow_mod(long long base,long long exp,long long mod,Counters*c) {
     long long result;
     if(exp<0 || mod<1 || mod>2000000000LL) {
@@ -721,9 +697,7 @@ double libraa_optimal_bst_roots(const double* p, const double* q, int n, int* ro
     }
     return e[1][n];
 }
-double libraa_optimal_bst(const double*p,const double*q,int n,Counters*c){
-    return libraa_optimal_bst_roots(p,q,n,NULL,c);
-}
+
 bool libraa_bellman_ford(int n, int m, const int* u, const int* v, const double* w, int src, double* out_dist, Counters* c) {
     if(n<1||n>128||m<0||src<0||src>=n||!out_dist||!u||!v||!w){
         errno=EINVAL;
@@ -1248,10 +1222,7 @@ int libraa_knapsack_01_least_cost_bb(int n, int W, const int* wt, const int* val
     }
     return max_profit;
 }
-int libraa_knapsack_01_branch_and_bound(int n, int W, const int* wt, const int* val, int* out_selected, Counters* c) {
-    // Defaults to Least-Cost (Best-First) Branch-and-Bound
-    return libraa_knapsack_01_least_cost_bb(n, W, wt, val, out_selected, c);
-}
+
 // ============================================================================
 // 5. FLOW AND MATCHING
 // ============================================================================

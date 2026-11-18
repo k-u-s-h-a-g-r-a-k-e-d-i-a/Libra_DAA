@@ -80,8 +80,10 @@ Optional CMake configuration builds a reusable static `daa` library and the CLI;
 
 ## Provenance
 
-C conversion with AI assistance, reusing and repairing the earlier C workbench and retaining the simple version's product behavior. Honest personal contribution details should be supplied by the student after reviewing and modifying the code. The local release tag is `c-v1.1`; no remote repository or eight-week development history is claimed. Standard C runtime I/O, strings, allocation and math support the explicitly implemented algorithms. No library sort, text-search or graph solver replaces assessed algorithms.
+C conversion with AI assistance, reusing and repairing the earlier C workbench and retaining the simple version's product behavior. Honest personal contribution details should be supplied by the student after reviewing and modifying the code. The local release tag is `c-v1.2`; no remote repository or eight-week development history is claimed. Standard C runtime I/O, strings, allocation and math support the explicitly implemented algorithms. No library sort, text-search or graph solver replaces assessed algorithms.
 
-## Windows regression fix (c-v1.1)
+## Windows regression fix (c-v1.2)
 
 The test source explicitly includes time.h for clock(). OBST near-equal floating-point ties retain the first root within relative tolerance 1e-12. Tests verify expected optimal cost, returned-tree cost, and deterministic tie handling. The five-key fixture has two mathematical optimal roots (2 and 4); the former test was too specific without a tie contract. The corrected suite passes native SSE and x87-style evaluation builds.
+
+Optional comparisons and unused wrappers have been removed. The app reuses the required binary-search functions. Both ID-search styles, the four required text matchers, merge/quick comparisons and mandated optimization/graph variants remain.

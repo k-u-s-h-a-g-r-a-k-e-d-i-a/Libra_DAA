@@ -1,5 +1,5 @@
 ALGORITHM LAB: required analytical examples, not extra app features
-Peak borrowing window: D&C=6, Kadane=6
+Peak borrowing window, divide and conquer=6
 Fast power: 2^10 mod 1000=24
 Universally cited document (zero-based)=2
 Similarity matrix products agree=1; scalar multiplications classical=8, Strassen=7

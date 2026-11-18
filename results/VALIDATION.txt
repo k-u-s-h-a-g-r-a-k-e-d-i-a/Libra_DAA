@@ -10,3 +10,5 @@ Windows execution remains to be verified on the evaluation laptop.
 Windows portability fix: explicit time.h; deterministic near-equal OBST ties; independent tree witness.
 Native and x87-style (-mfpmath=387 -fexcess-precision=fast) strict builds: 5691/5691 pass.
 ASan/UBSan updated suite: 5691/5691 pass (leak detection disabled as documented).
+
+c-v1.2 optional-code cleanup: native build/tests, benchmark correctness and ASan/UBSan suite pass. Book lookup now shares the tested binary-search implementation.

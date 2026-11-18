@@ -41,6 +41,7 @@ void library_init(Library *lib) {
 }
 void library_free(Library *lib) {
     free(lib->books);
+    free(lib->ids);
     free(lib->index);
     library_init(lib);
 }
@@ -237,6 +238,9 @@ int library_load(Library*lib,const char*path,char*error,size_t cap){
     merge_books(fresh.books,tmp,0,fresh.count);
     free(tmp);
     for(int i=1;i<fresh.count;++i)if(fresh.books[i-1].id==fresh.books[i].id)goto fail;
+    fresh.ids=malloc((size_t)fresh.count*sizeof(int));
+    if(!fresh.ids)goto fail;
+    for(int i=0;i<fresh.count;++i)fresh.ids[i]=fresh.books[i].id;
     if(!build_index(&fresh))goto fail;
     fresh.reader_count=1;
     fresh.readers[0].id=101;
@@ -264,26 +268,12 @@ int library_load(Library*lib,const char*path,char*error,size_t cap){
     }
     return ok;
 }
-static int book_rec(const Book*a,int lo,int hi,int id){
-    if(lo>hi)return -1;
-    int mid=lo+(hi-lo)/2;
-    if(a[mid].id==id)return mid;
-    if(a[mid].id<id)return book_rec(a,mid+1,hi,id);
-    return book_rec(a,lo,mid-1,id);
-}
-const Book*find_book(const Library*lib,int id,int recursive){
-    int lo=0,hi=lib->count-1,at=-1;
-    if(recursive)at=book_rec(lib->books,lo,hi,id);
-    else while(lo<=hi){
-        int mid=lo+(hi-lo)/2;
-        if(lib->books[mid].id==id){
-            at=mid;
-            break;
-        }
-        if(lib->books[mid].id<id)lo=mid+1;
-        else hi=mid-1;
-    }
-    return at<0?NULL:&lib->books[at];
+/* Reuse the same two mandatory implementations used by tests/benchmarks.
+   The IDs are built once at load, so each lookup stays O(log n). */
+const Book *find_book(const Library *lib,int id,int recursive) {
+    int at=recursive ? binary_rec(lib->ids,lib->count,id,NULL)
+                     : binary_iter(lib->ids,lib->count,id,NULL);
+    return at<0 ? NULL : &lib->books[at];
 }
 int keyword_lookup(const Library*lib,const char*raw,int*ids,int cap){
     char word[129];

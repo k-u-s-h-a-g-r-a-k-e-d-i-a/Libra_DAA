@@ -49,7 +49,7 @@ int run_lab(FILE*out){
     int activity[]={
         -2,1,-3,4,-1,2,1,-5,4
     },first,last;
-    fprintf(out,"Peak borrowing window: D&C=%d, Kadane=%d\n",libraa_max_subarray_dc(activity,0,8,&first,&last,NULL),libraa_max_subarray_kadane(activity,9,&first,&last,NULL));
+    fprintf(out,"Peak borrowing window, divide and conquer=%d\n",libraa_max_subarray_dc(activity,0,8,&first,&last,NULL));
     fprintf(out,"Fast power: 2^10 mod 1000=%lld\n",libraa_fast_pow_mod(2,10,1000,NULL));
     int citations[]={
         0,1,1,0,0,1,0,0,0

@@ -30,6 +30,7 @@ typedef struct {
 } Citation;
 typedef struct {
     Book *books;
+    int *ids; /* sorted ID array; position matches books[] */
     int count;
     IndexEntry *index;
     int index_count;

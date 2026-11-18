@@ -40,7 +40,7 @@ n=items; t=text bytes; m=pattern bytes; P=total posting entries; V/E=vertices/ed
 | KMP | Default matcher; prefix_table/match_text | O(t+m) worst | O(m) |
 | Rabin-Karp | Rolling hash plus character verification | O(t+m) typical with few verifications, O(t*m) worst | O(1) |
 | Finite automaton | LPS-based transition table | O(m*sigma+t) including build | O(m*sigma) |
-| D&C max-subarray / Kadane | Peak net borrowing activity | O(n log n)/O(n) | O(log n)/O(1) |
+| D&C max-subarray | Peak net borrowing activity | O(n log n) | O(log n) |
 | Fast powering | Modular numeric utility | O(log exponent) | O(1) |
 | Celebrity | Universally cited document fixture | O(n) elimination + verification | O(1) |
 | Classical/Strassen matrix product | Document-keyword similarity blocks | O(n^3)/O(p^log2(7)), p padded power of two | Strassen O(p^2); returned output excluded |
@@ -99,3 +99,7 @@ Map KNAPSACK decision to READING-PLAN decision: item weight -> book hours; item 
 ## Limits
 
 Catalog <=10k; query<=128 bytes; title<=256, author/subject<=128, description<=2048; at most 32 unique keywords, each<=64 and combined CSV field<=2049. ASCII case folding, whitespace collapse and UTF-8-byte preservation; no Unicode case normalization, multiline CSV or database. Copies 0..100; hours 1..10000; utility 0..1e6. DP<=100 items/W<=10000; BT/B&B<=20 with explicit 8192-container exhaustion failure. TSP<=12 with path buffer n+1; queens<=12; subset<=24 with nonnegative bounded values; matrix multiplication<=128; matrix-chain<=30 matrices/dimensions<=100; OBST<=30; matrix graph helpers<=128; flow and matching sides<=64; Kruskal edges<=512; CRT modulus product<=1e9, pairwise coprime. Integer max-subarray/log examples require sums fitting int. These bounds keep the prototype predictable and must be explained accurately.
+
+## Optional-code cleanup (c-v1.2)
+
+Removed the optional Kadane comparison and unused OBST/default-B&B wrapper functions. find_book now delegates to the single iterative/recursive implementations in algorithms.c through a sorted ID array built once on load. This avoids duplicate binary-search code while retaining O(log n) per lookup; the extra persistent IDs use count*sizeof(int) bytes and are freed with the catalog. Required alternative algorithms remain because Project 17 explicitly names them.
