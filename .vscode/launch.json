@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug LibraDAA C (optional debugger extension + gdb)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/libradaa",
+      "windows": {
+        "program": "${workspaceFolder}/libradaa.exe"
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "externalConsole": true,
+      "MIMode": "gdb",
+      "preLaunchTask": "Build LibraDAA C"
+    }
+  ]
+}

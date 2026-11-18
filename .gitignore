@@ -1,0 +1,6 @@
+/libradaa
+/libradaa.exe
+/build/
+/results/datasets/
+*.o
+*.a

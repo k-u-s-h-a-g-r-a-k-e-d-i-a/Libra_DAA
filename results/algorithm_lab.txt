@@ -1,0 +1,36 @@
+ALGORITHM LAB: required analytical examples, not extra app features
+Peak borrowing window: D&C=6, Kadane=6
+Fast power: 2^10 mod 1000=24
+Universally cited document (zero-based)=2
+Similarity matrix products agree=1; scalar multiplications classical=8, Strassen=7
+Reading-room events: 2 non-overlapping selections; 3 rooms to hold all
+Huffman: 240 input bits -> 112 payload bits; decoded correctly=1
+Bits stored as characters for teaching; codebook/padding overhead excluded, not packed-file compression.
+Branch route 0->5: Dijkstra=11, Bellman-Ford=11, Floyd=11
+Infrastructure MST: Prim=33, Kruskal=33
+Reading plan method 0: optimum=7
+Reading plan method 1: optimum=7
+Reading plan method 2: optimum=7
+Reading plan method 3: optimum=7
+Reading plan method 4: optimum=7
+Fractional upper bound=7.00
+LCS(data,dart) length=3; subsequence=dat
+Report matrix-chain minimum products=30000
+Frequent-keyword optimal BST cost=2.75
+keyword[2]
+  keyword[1]
+  keyword[5]
+    keyword[4]
+      keyword[3]
+Exact shelf tour cost=80; route: 0 1 3 2 0
+N-Queens columns by row: 0 4 7 5 2 6 1 3
+Citation target 35 subset: 10 7 18
+Capacity transfer max flow=17
+Copy allocation matching=3
+CRT ID reconstruction=23
+Naive overlapping positions: 0 1 2
+KMP overlapping positions: 0 1 2
+Rabin-Karp overlapping positions: 0 1 2
+Automaton overlapping positions: 0 1 2
+ID 8: iterative index=3, recursive index=3
+Merge/quick sorts agree=1

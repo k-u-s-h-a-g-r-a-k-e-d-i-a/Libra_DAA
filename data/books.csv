@@ -1,0 +1,11 @@
+id,title,author,subject,keywords,description,copies,hours,value
+1,Introduction to Algorithms,Cormen,daa,sorting;searching;graphs,Algorithms for sorting and searching data,2,4,9
+2,Data Structures,Sahni,daa,trees;searching;sorting,Learn arrays trees and efficient searching,1,3,7
+3,Algorithm Design,Kleinberg,daa,graphs;dynamic programming,Greedy and dynamic programming examples,1,5,10
+4,Computer Networks,Tanenbaum,dcn,routing;graphs;networks,Routing and reliable network communication,2,4,8
+5,Operating Systems,Silberschatz,os,scheduling;memory,Processes scheduling and memory management,1,6,9
+6,Python Basics,Author A,programming,python;arrays,Small programming examples,3,2,4
+7,Graph Theory,Author B,daa,graphs;matching;networks,Paths spanning trees matching and flow,1,3,8
+8,Machine Learning,Author C,ml,learning;optimization,Introduction to learning and optimization,1,5,7
+9,Search Engines,Author D,information retrieval,searching;indexing;ranking,Keyword indexing and ranked searching,2,2,6
+10,Text Algorithms,Author E,daa,searching;strings;sorting,Pattern matching and longest common subsequences,1,3,7

@@ -1,0 +1,10 @@
+LibraDAA | Simple Digital Library | Pure C
+Loaded 10 books.
+
+1 Search books
+2 Recommend books
+3 Required scenarios + benchmarks
+4 Algorithm lab
+5 Load / export CSV
+0 Exit
+Choice: 

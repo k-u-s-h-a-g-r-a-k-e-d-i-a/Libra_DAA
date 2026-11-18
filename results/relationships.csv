@@ -1,0 +1,4 @@
+type,from,to
+read,101,1
+read,102,2
+cites,2,1
