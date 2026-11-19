@@ -53,9 +53,9 @@ if (b != NULL) {
 
 ## How to follow the code
 
-1. main.c: find `main` and the `choice == 1` branch.
+1. main.c: find `main` and `search_menu`.
 2. library.h: inspect Book, Hit and Library.
-3. library.c: inspect `search_books`, then `merge_sort` and `compare_hits`.
+3. library.c: inspect `search_books`, then `compare_hits`. Find `merge_sort` in algorithms.c.
 4. algorithms.c: read the NAIVE part of `match_text` before KMP.
 5. library.c: inspect `recommend_books`.
 6. Then study KMP's prefix_table and the LCS table.
@@ -107,7 +107,7 @@ Finally: use the mandatory map in docs/DESIGN_AND_ANALYSIS.md for remaining algo
 
 The four-minute viva can cover the whole project and DAA foundations. Understanding a small implementation helps; memorizing a paragraph is not a substitute for tracing its code.
 
-## Current shared interfaces (c-v1.3)
+## Current shared interfaces (c-v1.4)
 
 Read docs/REUSE_MAP.md for the shared function signatures. There is now one merge_sort for all record types, one quick_sort, and one iterative/one recursive binary search. The extra arguments width/compare let the same implementation work on different records. A comparator defines ordering; it is not another sorting algorithm. The three required B&B orders use one function with BBOrder. Standalone fractional and knapsack-BT demos are removed; N-Queens/subsets still cover required backtracking.
 

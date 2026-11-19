@@ -63,7 +63,7 @@ On Windows replace `./libradaa` with `.\libradaa.exe`.
 |---|---|
 | src/main.c | Input, five-choice menu, printed output |
 | src/library.h and library.c | Records, CSV validation, index, search, recommendations, export |
-| src/algorithms.h and algorithms.c | Matchers, binary searches, integer sorts and LCS |
+| src/algorithms.h and algorithms.c | Matchers, binary searches, shared sorts and LCS |
 | src/workbench.h and workbench.c | Remaining mandatory syllabus algorithms |
 | src/counters.h | Operation counters, modeled memory and platform timer |
 | src/evidence.c | Domain examples, three scenarios and benchmark CSV |
@@ -81,9 +81,9 @@ Optional CMake configuration builds a reusable static `daa` library and the CLI;
 
 ## Provenance
 
-C conversion with AI assistance, reusing and repairing the earlier C workbench and retaining the simple version's product behavior. Honest personal contribution details should be supplied by the student after reviewing and modifying the code. The local release tag is `c-v1.3`; no remote repository or eight-week development history is claimed. Standard C runtime I/O, strings, allocation and math support the explicitly implemented algorithms. No library sort, text-search or graph solver replaces assessed algorithms.
+C conversion with AI assistance, reusing and repairing the earlier C workbench and retaining the simple version's product behavior. Honest personal contribution details should be supplied by the student after reviewing and modifying the code. The local release tag is `c-v1.4`; no remote repository or eight-week development history is claimed. Standard C runtime I/O, strings, allocation and math support the explicitly implemented algorithms. No library sort, text-search or graph solver replaces assessed algorithms.
 
-## Windows regression fix (c-v1.3)
+## Windows regression fix (c-v1.4)
 
 The test source explicitly includes time.h for clock(). OBST near-equal floating-point ties retain the first root within relative tolerance 1e-12. Tests verify expected optimal cost, returned-tree cost, and deterministic tie handling. The five-key fixture has two mathematical optimal roots (2 and 4); the former test was too specific without a tie contract. The corrected suite passes native SSE and x87-style evaluation builds.
 

@@ -8,7 +8,7 @@ Loaded 10 books.
 5 Load / export CSV
 0 Exit
 Choice: Search type: 1 substring, 2 exact ID, 3 keyword index: Word / phrase: Engine 0 naive, 1 KMP, 2 Rabin-Karp, 3 automaton: Invalid input or insufficient memory.
-Operations: 0 | modeled auxiliary bytes: 0
+Counted comparisons/steps: 0 | modeled auxiliary bytes: 0
 Score = 3*title matches + 2*keyword matches + description matches.
 
 1 Search books

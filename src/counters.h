@@ -11,36 +11,31 @@
 #include <time.h>
 #endif
 typedef struct {
-    long long comparisons;
-    /* element/character comparisons */     long long char_ops;
-    /* auxiliary character operations (automaton builds...) */     long long hash_ops;
-    /* modular multiplications (Rabin-Karp, CRT, fast pow) */     long long assignments;
-    /* moves/copies during sorts */     long long aux_bytes;
-    /* auxiliary allocations (lps tables, DP rows, queues) */
-}
-Counters;
-static inline void counters_reset(Counters* c) {
+    long long comparisons;       /* Selected comparisons or algorithm steps. */
+    long long multiplications;   /* Multiplications instrumented in the math examples. */
+    long long aux_bytes;         /* Largest explicitly modeled workspace. */
+} Counters;
+static inline void counters_reset(Counters *c) {
     if (c) {
         c->comparisons = 0;
-        c->char_ops = 0;
-        c->hash_ops = 0;
-        c->assignments = 0;
+        c->multiplications = 0;
         c->aux_bytes = 0;
     }
 }
 /* Peak modeled algorithm workspace;
-does not include input/output or allocator overhead. */ static inline void counters_memory(Counters *c, size_t bytes) {
+does not include input/output or allocator overhead. */
+static inline void counters_memory(Counters *c, size_t bytes) {
     if (c && (long long)bytes > c->aux_bytes) c->aux_bytes = (long long)bytes;
 }
-/* Wall-time measurement for the benchmark protocol (monotonic clock) */ typedef struct {
+/* Wall-time measurement for the benchmark protocol (monotonic clock) */
+typedef struct {
 #ifdef _WIN32
     LARGE_INTEGER start;
     LARGE_INTEGER freq;
 #else
     struct timespec start;
 #endif
-}
-Timer;
+} Timer;
 static inline void timer_start(Timer* t) {
 #ifdef _WIN32
     QueryPerformanceFrequency(&t->freq);
@@ -49,6 +44,7 @@ static inline void timer_start(Timer* t) {
     clock_gettime(CLOCK_MONOTONIC, &t->start);
 #endif
 }
+
 static inline long long timer_stop_us(const Timer* t) {
 #ifdef _WIN32
     LARGE_INTEGER now;

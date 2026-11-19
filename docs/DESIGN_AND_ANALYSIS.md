@@ -22,6 +22,8 @@ Recommendation candidates share a keyword or subject. This C implementation scan
 
 --bench produces 62 comparison rows: 18 rows per dataset size plus 8 optimizer rows. Every comparison uses the same input, one discarded warm-up and five measured runs. Sorting reset/copy and file loading occur outside its timed region. Full-catalog search time includes ranking. Timer uses QueryPerformanceCounter on Windows and CLOCK_MONOTONIC on POSIX. POSIX builds define _POSIX_C_SOURCE through build flags. Operation counters are algorithm-level events, not CPU instruction counts; instrumentation is enabled inside timing. Small runs may measure zero microseconds.
 
+The CSV column counted_steps records selected comparisons and algorithm steps. Strassen tracks padded matrices and simultaneously active recursive buffers.
+
 Memory is **modeled auxiliary payload**, not process RSS. Matcher tables and merge buffers use actual element counts. DP records its allocated table bytes. The single B&B engine records its shared reserved frontier payload, even when partly unused. Flow/matching record fixed helper arrays, not total process memory. Persistent catalog/index, result buffers, allocator overhead and most stack frames are excluded. Zero for constant-space algorithms means no modeled dynamic buffer, not literally zero memory use. Data quality means exact-position/rank agreement, same sorted multiset, or feasible exact utility. Reading utility is a chosen input, not a learned relevance estimate.
 
 CSV exports cover catalog, keyword postings, recommendations, reader history and citations. --demo also records the scenario output and benchmarks. Results are regenerated from the current program and environment; old C++ measurements are not carried over.
@@ -32,17 +34,17 @@ n=items; t=text bytes; m=pattern bytes; P=total posting entries; V/E=vertices/ed
 
 | Algorithm | Library application / C function | Time | Auxiliary space |
 |---|---|---|---|
-| Merge sort | Book IDs, index, ranking; merge_ints | O(n log n) all cases | O(n) buffers + O(log n) recursion |
-| Quick sort | Sorting comparison; quick_ints | O(n log n) balanced/average, O(n^2) worst | O(log n) smaller-side recursion |
+| Merge sort | Book IDs, index, ranking; merge_sort | O(n log n) all cases | O(n) buffers + O(log n) recursion |
+| Quick sort | Sorting comparison; quick_sort | O(n log n) balanced/average, O(n^2) worst | O(log n) smaller-side recursion |
 | Binary search iterative/recursive | Sorted IDs; binary_iter/rec and find_book | O(1) best, O(log n) average/worst | O(1)/O(log n) |
 | Keyword index | Sorted word/ID entries; keyword_lookup | O(log P + matches), after O(P log P) build | Returned IDs excluded |
 | Naive | Simple search oracle; match_text | O(t*m) worst, O(t) easy first-char mismatches | O(1) |
-| KMP | Default matcher; prefix_table/match_text | O(t+m) worst | O(m) |
+| KMP | Recommended matcher; prefix_table/match_text | O(t+m) worst | O(m) |
 | Rabin-Karp | Rolling hash plus character verification | O(t+m) typical with few verifications, O(t*m) worst | O(1) |
 | Finite automaton | LPS-based transition table | O(m*sigma+t) including build | O(m*sigma) |
 | D&C max-subarray | Peak net borrowing activity | O(n log n) | O(log n) |
 | Fast powering | Modular numeric utility | O(log exponent) | O(1) |
-| Celebrity | Universally cited document fixture | O(n) elimination + verification | O(1) |
+| Celebrity | Universally cited document fixture | O(n) elimination + verification | O(log n) recursive stack |
 | Classical/Strassen matrix product | Document-keyword similarity blocks | O(n^3)/O(p^log2(7)), p padded power of two | Strassen O(p^2); returned output excluded |
 | Activity selection | Maximum non-overlapping reading events | O(n log n) shared merge sort + O(n) scan | O(n) merge buffer |
 | Interval partitioning | Minimum rooms for all events | O(n log n) shared sort + O(n^2) room scans | O(n) bounded arrays |
@@ -98,6 +100,6 @@ Map KNAPSACK decision to READING-PLAN decision: item weight -> book hours; item 
 
 Catalog <=10k; query<=128 bytes; title<=256, author/subject<=128, description<=2048; at most 32 unique keywords, each<=64 and combined CSV field<=2049. ASCII case folding, whitespace collapse and UTF-8-byte preservation; no Unicode case normalization, multiline CSV or database. Copies 0..100; hours 1..10000; utility 0..1e6. DP<=100 items/W<=10000; B&B<=20 with explicit 8192-container exhaustion failure. TSP<=12 with path buffer n+1; queens<=12; subset<=24 with nonnegative bounded values; matrix multiplication<=128; matrix-chain<=30 matrices/dimensions<=100; OBST<=30; matrix graph helpers<=128; flow and matching sides<=64; Kruskal edges<=512; CRT modulus product<=1e9, pairwise coprime. Integer max-subarray/log examples require sums fitting int. These bounds keep the prototype predictable and must be explained accurately.
 
-## Minimal reusable implementation (c-v1.3)
+## Minimal reusable implementation (c-v1.4)
 
 See REUSE_MAP.md: each named algorithm has one implementation. Removed optional Kadane, standalone fractional/knapsack-BT, copied typed merge sorts, bubble/insertion sorts, copied B&B engines, duplicate search loops and the redundant persistent ID array. Required iterative/recursive binary searches and all other explicitly named alternatives remain. Comparators define ordering only; the shared algorithms handle all arrays through element width and a comparison function. Tiny brute-force routines remain only as the required test oracles.

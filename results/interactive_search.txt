@@ -10,7 +10,7 @@ Loaded 10 books.
 Choice: Search type: 1 substring, 2 exact ID, 3 keyword index: Word / phrase: Engine 0 naive, 1 KMP, 2 Rabin-Karp, 3 automaton: ID 1 | introduction to algorithms | score 3.000
 ID 2 | data structures | score 2.000
 ID 10 | text algorithms | score 2.000
-Operations: 999 | modeled auxiliary bytes: 48
+Counted comparisons/steps: 999 | modeled auxiliary bytes: 48
 Score = 3*title matches + 2*keyword matches + description matches.
 First result title positions (zero-based):
 
@@ -26,15 +26,6 @@ ID 3 | algorithm design | score 0.502
 ID 7 | graph theory | score 0.438
 ID 4 | computer networks | score 0.162
 Recommendation = .5*keyword overlap + .3*same subject + .2*normalized title LCS.
-
-1 Search books
-2 Recommend books
-3 Required scenarios + benchmarks
-4 Algorithm lab
-5 Load / export CSV
-0 Exit
-Choice: Search type: 1 substring, 2 exact ID, 3 keyword index: Book ID: Iterative/recursive agreement: yes
-Not found
 
 1 Search books
 2 Recommend books

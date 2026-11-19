@@ -1,6 +1,6 @@
 1 NORMAL: identical catalog and query 'sorting'
-Naive: hits=3, agreement=1, median_us=0, modeled_aux_bytes=48
-KMP: hits=3, agreement=1, median_us=1, modeled_aux_bytes=48
+Naive: hits=3, agreement=1, median_us=1, modeled_aux_bytes=48
+KMP: hits=3, agreement=1, median_us=2, modeled_aux_bytes=48
 2 SHOCK: reading budget falls from 10 to 5 hours
 Book 1: introduction to algorithms, 4 hours, value 9
 Book 2: data structures, 3 hours, value 7

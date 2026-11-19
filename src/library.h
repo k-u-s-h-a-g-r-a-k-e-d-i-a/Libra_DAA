@@ -5,33 +5,29 @@
 #include <stdio.h>
 #define MAX_BOOKS 10000
 #define MAX_KEYWORDS 32
-/* One row from data/books.csv. */ typedef struct {
+/* One row from data/books.csv. */
+typedef struct {
     int id, copies, hours, value;
     char title[257], author[129], subject[129], description[2049];
     char keywords[MAX_KEYWORDS][65];
     int keyword_count;
-}
-Book;
+} Book;
 typedef struct {
     char word[65];
     int book_id;
-}
-IndexEntry;
+} IndexEntry;
 typedef struct {
     int id;
     double score;
-}
-Hit;
+} Hit;
 typedef struct {
     int id;
     char name[64];
     int history[8], history_count;
-}
-Reader;
+} Reader;
 typedef struct {
     int from, to;
-}
-Citation;
+} Citation;
 typedef struct {
     Book *books;
     int count;
@@ -41,8 +37,7 @@ typedef struct {
     int reader_count;
     Citation citations[1];
     int citation_count;
-}
-Library;
+} Library;
 void library_init(Library *lib);
 void library_free(Library *lib);
 int library_load(Library *lib, const char *path, char *error, size_t error_capacity);
