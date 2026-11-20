@@ -4,3 +4,5 @@
 /results/datasets/
 *.o
 *.a
+/algorithms.o
+/libdaa.a

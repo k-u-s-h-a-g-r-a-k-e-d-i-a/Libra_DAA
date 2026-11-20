@@ -1,4 +1,4 @@
-#include "library.h"
+#include "libra.h"
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -283,7 +283,7 @@ int search_books(const Library *lib, const char *raw, Matcher engine,
         if (errno == ENOMEM) return -1;
 
         /* LIVE EDIT: change a weight, then search for the same word again. */
-        double score = 3.0 * title_matches + 2.0 * keyword_matches + description_matches;
+        double score = TITLE_WEIGHT * title_matches + KEYWORD_WEIGHT * keyword_matches + DESCRIPTION_WEIGHT * description_matches;
         if (score > 0) {
             hits[count].id = book->id;
             hits[count].score = score;
@@ -323,11 +323,11 @@ int recommend_books(const Library *lib, int id, Hit *hits, int capacity) {
 
         /* LIVE EDIT: keyword overlap, same subject, and title similarity. */
         hits[count].id = book->id;
-        hits[count].score = .5 * jaccard + .3 * same_subject + .2 * title_similarity;
+        hits[count].score = KEYWORD_SIMILARITY_WEIGHT * jaccard + SUBJECT_SIMILARITY_WEIGHT * same_subject + TITLE_SIMILARITY_WEIGHT * title_similarity;
         count++;
     }
     if (!merge_sort(hits, count, sizeof(Hit), compare_hits, NULL)) return -1;
-    if (count > 5) return 5;
+    if (count > RECOMMENDATION_LIMIT) return RECOMMENDATION_LIMIT;
     return count;
 }
 

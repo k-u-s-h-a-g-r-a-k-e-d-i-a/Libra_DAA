@@ -1,8 +1,0 @@
-Release c-v1.4 C11 build: no warnings.
-5502 assertions, zero failures, in native and x87-style strict builds.
-ASan/UBSan suite and algorithm lab passed; leak detection disabled due to runtime restriction.
-62/62 benchmark rows verified.
-Interactive menu, search, recommendation and export exercised.
-One shared implementation per named algorithm; comparator and B&B-order reuse tested.
-Windows execution and actual IDE buttons remain to be verified on the evaluation laptop.
-CLI boundary checks passed for a 128-byte query, recovery from 129 bytes, a 65-byte keyword, and ID 1500000000.

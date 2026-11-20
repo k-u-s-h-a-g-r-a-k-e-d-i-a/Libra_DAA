@@ -1,4 +1,4 @@
-#include "library.h"
+#include "libra.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -82,134 +82,124 @@ static void locate_data(const char *program) {
 #endif
 }
 
-static void search_menu(const Library *lib) {
-    int kind;
-    if (!read_number("Search type: 1 substring, 2 exact ID, 3 keyword index: ", &kind)) return;
-    if (kind == 2) {
-        int id;
-        if (!read_number("Book ID: ", &id)) return;
-        const Book *a = find_book(lib, id, 0), *b = find_book(lib, id, 1);
-        printf("Iterative/recursive agreement: %s\n", a == b?"yes":"no");
-        puts(a?a->title:"Not found");
+/* The regular menu uses one strategy for each task. Required alternatives run with --compare. */
+static void show_books(const Library *lib) {
+    puts("ID | Title | Subject | Copies | Hours | Value");
+    for (int i = 0; i < lib->count; i++) {
+        const Book *book = &lib->books[i];
+        printf("%d | %s | %s | %d | %d | %d\n", book->id, book->title, book->subject,
+               book->copies, book->hours, book->value);
     }
-    else if (kind == 3) {
-        char word[129];
-        if (!read_line("Keyword: ", word, sizeof(word))) return;
-        int *ids = malloc((size_t)lib->count*sizeof(int));
-        if (!ids) {
-            puts("Not enough memory.");
-            return;
-        }
-        int n = keyword_lookup(lib, word, ids, lib->count);
-        for (int i = 0; i < n; ++i) printf("%d | %s\n", ids[i], find_book(lib, ids[i], 0)->title);
-        if (n < 0) puts("Keywords can contain up to 64 bytes.");
-        if (n == 0) puts("No results.");
-        free(ids);
-    }
-    else if (kind == 1) {
-        char query[129];
-        int engine;
-        if (!read_line("Word / phrase: ", query, sizeof(query))) return;
-        if (!read_number("Engine 0 naive, 1 KMP, 2 Rabin-Karp, 3 automaton: ", &engine)) return;
-        if (engine < 0 || engine > 3) {
-            puts("Choose engine 0..3.");
-            return;
-        }
-        Hit *hits = malloc((size_t)lib->count*sizeof(Hit));
-        Counters stats;
-        counters_reset(&stats);
-        if (!hits) {
-            puts("Not enough memory.");
-            return;
-        }
-        int n = search_books(lib, query, (Matcher)engine, hits, lib->count, &stats);
-        print_hits(lib, hits, n);
-        printf("Counted comparisons/steps: %lld | modeled auxiliary bytes: %lld\n", stats.comparisons, stats.aux_bytes);
-        puts("Score = 3*title matches + 2*keyword matches + description matches.");
-        if (n > 0) {
-            size_t pos[256];
-            normalize(query);
-            const Book *b = find_book(lib, hits[0].id, 0);
-            size_t total = match_text(b->title, query, (Matcher)engine, pos, 256, NULL);
-            printf("First result title positions (zero-based):");
-            for (size_t i = 0; i < total && i < 256; ++i) printf(" %zu", pos[i]);
-            putchar('\n');
-        }
-        free(hits);
-    }
-    else puts("Choose search type 1..3.");
 }
 
-int main(int argc, char**argv) {
-    Library lib;
-    char error[256];
-    int status = 0;
-    library_init(&lib);
+static void search_menu(const Library *lib) {
+    char query[129];
+    if (!read_line("Search word or phrase: ", query, sizeof(query))) return;
+    Hit *results = malloc((size_t)lib->count * sizeof(Hit));
+    if (!results) { puts("Not enough memory."); return; }
+    /* KMP finds occurrences. search_books calculates scores and calls merge_sort. */
+    int count = search_books(lib, query, KMP, results, lib->count, NULL);
+    print_hits(lib, results, count);
+    printf("Relevance weights: title %.1f, keywords %.1f, description %.1f\n",
+           TITLE_WEIGHT, KEYWORD_WEIGHT, DESCRIPTION_WEIGHT);
+    free(results);
+}
+
+static void find_menu(const Library *lib) {
+    int id;
+    if (!read_number("Book ID: ", &id)) return;
+    const Book *book = find_book(lib, id, 0);
+    if (!book) { puts("Book ID not found. Choose Show books to see available IDs."); return; }
+    printf("%s by %s\nSubject %s | Copies %d | Hours %d | Value %d\n",
+           book->title, book->author, book->subject, book->copies, book->hours, book->value);
+}
+
+static void recommend_menu(const Library *lib) {
+    int id;
+    if (!read_number("Recommend books similar to book ID: ", &id)) return;
+    if (!find_book(lib, id, 0)) { puts("Book ID not found. Choose Show books to see available IDs."); return; }
+    Hit *results = malloc((size_t)lib->count * sizeof(Hit));
+    if (!results) { puts("Not enough memory."); return; }
+    int count = recommend_books(lib, id, results, lib->count);
+    print_hits(lib, results, count);
+    free(results);
+}
+
+static void reading_menu(const Library *lib) {
+    if (lib->count > 100) { puts("The exact reading planner supports up to 100 books."); return; }
+    int budget;
+    if (!read_number("Available reading hours (0 to 10000): ", &budget)) return;
+    if (budget < 0 || budget > 10000) { puts("Choose a budget from 0 to 10000."); return; }
+    int hours[100], values[100], chosen[100];
+    for (int i = 0; i < lib->count; i++) {
+        hours[i] = lib->books[i].hours;
+        values[i] = lib->books[i].value;
+    }
+    int best = libraa_knapsack_01_dp(lib->count, budget, hours, values, chosen, NULL);
+    if (best < 0) { puts("The reading plan could not be calculated."); return; }
+    printf("Best total value: %d\n", best);
+    int used = 0;
+    for (int i = 0; i < lib->count; i++) {
+        if (chosen[i]) {
+            const Book *book = &lib->books[i];
+            printf("ID %d | %s | %d hours | value %d\n", book->id, book->title, book->hours, book->value);
+            used += book->hours;
+        }
+    }
+    printf("Hours used: %d of %d\n", used, budget);
+}
+
+static void keyword_menu(const Library *lib) {
+    char query[129];
+    if (!read_line("Exact keyword (for example sorting): ", query, sizeof(query))) return;
+    int *ids = malloc((size_t)lib->count * sizeof(int));
+    if (!ids) { puts("Not enough memory."); return; }
+    int count = keyword_lookup(lib, query, ids, lib->count);
+    if (count < 0) puts("Keyword must fit in 64 bytes.");
+    else if (count == 0) puts("No exact keyword tag found. Try text search for partial words.");
+    for (int i = 0; i < count; i++) {
+        const Book *book = find_book(lib, ids[i], 0);
+        printf("ID %d | %s\n", book->id, book->title);
+    }
+    free(ids);
+}
+
+int main(int argc, char **argv) {
     locate_data(argv[0]);
-    if (argc > 1 && strcmp(argv[1],"--test") == 0) return run_tests(stdout)?0:1;
-    if (argc > 1 && strcmp(argv[1],"--lab") == 0) return run_lab(stdout)?0:1;
-    if (argc > 1 && strcmp(argv[1],"--bench") == 0) return run_benchmarks(stdout)?0:1;
-    if (!library_load(&lib,"data/books.csv", error, sizeof(error))) {
-        fprintf(stderr,"%s\n", error);
+    if (argc > 1 && strcmp(argv[1], "--test") == 0) return run_tests(stdout) ? 0 : 1;
+    Library library;
+    char error[256];
+    library_init(&library);
+    if (!library_load(&library, "data/books.csv", error, sizeof(error))) {
+        puts(error);
         return 1;
     }
     if (argc > 1) {
-        if (strcmp(argv[1],"--demo") == 0) {
-            if (!make_directory("results")) {
-                library_free(&lib);
-                return 1;
-            }
-            FILE *f = fopen("results/scenarios.txt","w");
-            status = f && run_scenarios(&lib, f) && run_scenarios(&lib, stdout) && run_benchmarks(stdout) && export_reports(&lib,"results");
-            if (f && fclose(f)) status = 0;
-            library_free(&lib);
-            return status?0:1;
-        }
-        fprintf(stderr,"Use --test, --lab, --bench or --demo.\n");
-        library_free(&lib);
-        return 1;
+        int success = 0;
+        if (strcmp(argv[1], "--compare") == 0 || strcmp(argv[1], "--demo") == 0) {
+            success = run_complete_comparisons(&library, stdout);
+        } else if (strcmp(argv[1], "--export") == 0) {
+            success = export_reports(&library, "results");
+            puts(success ? "Saved CSV reports in results/." : "Export failed.");
+        } else puts("Use --compare, --test or --export.");
+        library_free(&library);
+        return success ? 0 : 1;
     }
-    printf("LibraDAA | Simple Digital Library | Pure C\nLoaded %d books.\n", lib.count);
+    printf("LibraDAA | Loaded %d books\n", library.count);
     for (;;) {
         int choice;
-        puts("\n1 Search books\n2 Recommend books\n3 Required scenarios + benchmarks\n4 Algorithm lab\n5 Load / export CSV\n0 Exit");
+        puts("\n1 Show books\n2 Search text\n3 Find book by ID\n4 Recommend similar books\n5 Build a reading plan\n6 Exact keyword lookup\n0 Exit");
         if (!read_number("Choice: ", &choice) || choice == 0) break;
-        if (choice == 1) {
-            search_menu(&lib);
+        switch (choice) {
+            case 1: show_books(&library); break;
+            case 2: search_menu(&library); break;
+            case 3: find_menu(&library); break;
+            case 4: recommend_menu(&library); break;
+            case 5: reading_menu(&library); break;
+            case 6: keyword_menu(&library); break;
+            default: puts("Choose a menu option from 0 to 6.");
         }
-        else if (choice == 2) {
-            int id;
-            if (!read_number("Book ID: ", &id)) break;
-            Hit *hits = malloc((size_t)lib.count*sizeof(Hit));
-            if (!hits) {
-                puts("Not enough memory.");
-                continue;
-            }
-            int count = recommend_books(&lib, id, hits, lib.count);
-            print_hits(&lib, hits, count);
-            free(hits);
-            puts("Recommendation = .5*keyword overlap + .3*same subject + .2*normalized title LCS.");
-        }
-        else if (choice == 3) {
-            if (!run_scenarios(&lib, stdout) || !run_benchmarks(stdout)) puts("Scenario or benchmark failed.");
-        }
-        else if (choice == 4) {
-            if (!run_lab(stdout)) puts("Algorithm lab failed.");
-        }
-        else if (choice == 5) {
-            int action;
-            if (!read_number("1 Load CSV, 2 export reports: ", &action)) break;
-            if (action == 1) {
-                char path[512];
-                if (!read_line("CSV path: ", path, sizeof(path))) break;
-                if (!library_load(&lib, path, error, sizeof(error))) puts(error);
-                else printf("Loaded %d books.\n", lib.count);
-            }
-            else if (action == 2) puts(export_reports(&lib,"results")?"Saved CSV reports in results/.":"Export failed.");
-            else puts("Choose 1 or 2.");
-        }
-        else puts("Choose 0..5.");
     }
-    library_free(&lib);
+    library_free(&library);
     return 0;
 }

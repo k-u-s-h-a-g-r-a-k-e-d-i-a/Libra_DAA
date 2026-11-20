@@ -1,8 +1,0 @@
-Measured UTC: 2026-11-19T08:51:41.637961+00:00
-OS: Linux-6.18.57-x86_64-with-glibc2.41
-Compiler: gcc (Debian 14.2.0-19) 14.2.0
-Flags: -std=c11 -O2 -Wall -Wextra -Wpedantic -D_POSIX_C_SOURCE=200809L -D__USE_MINGW_ANSI_STDIO=1
-Clock: CLOCK_MONOTONIC, microseconds, instrumentation enabled
-One discarded warm-up, five repetitions. Memory is modeled auxiliary payload.
-62/62 benchmark rows have correct=1.
-Windows/MinGW GCC 6.3 compatibility target; not executed here. CMake not executed.
